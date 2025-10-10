@@ -82,19 +82,17 @@
       background: linear-gradient(180deg, rgba(110,168,254,.2), rgba(110,168,254,.05));
       border-color: rgba(110,168,254,.35); color: white;
     }
-    .btn.ghost{
-      background: transparent;
-    }
+    .btn.ghost{ background: transparent; }
 
-    /* Cards */
+    /* Layout */
     .grid{
       display:grid;
       grid-template-columns: 1.1fr 1fr;
       gap: 18px;
     }
-    @media (max-width: 980px){
-      .grid{ grid-template-columns: 1fr; }
-    }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
+
+    /* Panel */
     .panel{
       background: var(--panel);
       border: 1px solid var(--border);
@@ -131,9 +129,7 @@
       color: var(--muted);
     }
     .kebab{ opacity:.7; }
-    .row{
-      display:flex; gap:10px; align-items:center; flex-wrap:wrap
-    }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
 
     /* Quick add */
     .quick{
@@ -149,40 +145,71 @@
       background: rgba(0,0,0,.04); color: var(--text);
     }
 
-    /* Calendar */
-    .cal{
-      display:grid; grid-template-columns: repeat(7,1fr); gap:10px;
-    }
-    @media (max-width: 860px){
-      .cal{ grid-template-columns: repeat(3,1fr) }
-    }
-    @media (max-width: 560px){
-      .cal{ grid-template-columns: repeat(2,1fr) }
-    }
-    .day{
-      border:1px solid var(--border); border-radius:12px; padding:10px;
+    /* Agenda (Apple-style list) */
+    .agenda-day{
+      border:1px solid var(--border);
+      border-radius: var(--radius);
       background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
-      min-height:90px;
-      display:flex; flex-direction:column; gap:6px;
+      margin-bottom: 12px; overflow: hidden;
     }
-    .day .d{ font-size:12px; color: var(--muted) }
-    .pill{
-      font-size:12px; padding:6px 8px; border-radius:10px; border:1px solid var(--border);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    .agenda-day-hd{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 12px; border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06));
+      font-size:13px; letter-spacing:.2px;
     }
-    .pill.blue{ border-color: rgba(110,168,254,.4) }
-    .pill.green{ border-color: rgba(125,242,201,.45) }
+    .agenda-day-hd .date{ color: var(--muted) }
+    .agenda-list{ display:flex; flex-direction:column }
+    .agenda-row{
+      display:grid; grid-template-columns: 20px 1fr auto; align-items:center;
+      gap:10px; padding:10px 12px; border-top:1px solid var(--border);
+    }
+    .agenda-row:first-child{ border-top: none }
+    .agenda-row .dot{
+      width:10px; height:10px; border-radius:50%;
+      border:2px solid var(--border);
+    }
+    .dot.blue{ background: rgba(110,168,254,.9) }
+    .dot.green{ background: rgba(125,242,201,.95) }
+    .dot.purple{ background: #b38aff }
+    .dot.orange{ background: #ffb05a }
+    .dot.gray{ background: #9aa3b2 }
+    .agenda-title{ font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+    .agenda-meta{ color: var(--muted); font-size:12px }
+    .agenda-badge{
+      font-size:11px; padding:4px 8px; border-radius:999px;
+      border:1px solid var(--border); color: var(--muted);
+    }
+    .agenda-allday{
+      display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--border); flex-wrap:wrap;
+    }
+    .allday-pill{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      border:1px solid var(--border); background: rgba(255,255,255,.02);
+      white-space:nowrap;
+    }
 
     footer{
       margin-top: 24px; color: var(--muted); font-size:12px; text-align:center;
     }
-
     .sep{ height:1px; background: var(--border); margin: 8px 0 }
     .faded{ color: var(--muted) }
     .badge{
       font-size:11px; padding:3px 8px; border-radius:999px; background: rgba(110,168,254,.15); border:1px solid rgba(110,168,254,.35);
       color: #dbe9ff;
     }
+    
+    /* Crash subtasks (accordion) */
+    .chev{ font-size:14px; border:1px solid var(--border); border-radius:8px; padding:4px 8px; }
+    .sublist{
+      display:none; margin:8px 0 0 38px;
+      padding:8px 10px; border-left:2px solid var(--border);
+      display:none; gap:8px; flex-direction:column;
+    }
+    .sublist.open{ display:flex; }
+    .subitem{ display:flex; align-items:center; gap:8px; font-size:13px; }
+    .subitem .tick{ width:12px; height:12px; border-radius:3px; border:1px solid var(--border); background:rgba(0,0,0,.04); }
+    .subitem.done .subtxt{ color:var(--muted); text-decoration:line-through; }
   </style>
 </head>
 <body>
@@ -239,14 +266,14 @@
         </section>
       </div>
 
-      <!-- Right column: Calendar glance -->
-      <section class="panel">
+      <!-- Right column: Agenda (Apple-style) -->
+      <section class="panel" id="agendaPanel">
         <div class="hd">
-          <h2>Calendar (Next 7 Days)</h2>
+          <h2>Agenda</h2>
           <div class="hint" id="tzHint">—</div>
         </div>
         <div class="bd">
-          <div class="cal" id="calGrid"></div>
+          <div id="agenda"></div>
         </div>
         <div class="ft">
           <button class="btn ghost" id="openCalendar">Open Calendar</button>
@@ -283,44 +310,118 @@
     // ------------ Mock data
     function mockTop3(){
       return [
-        { title: "Ship Jenquin v1 page", due: "", completed: false, tag:"#Admin" },
-        { title: "Record 'Album Stream' bumper", due: "", completed: false, tag:"#Creative" },
-        { title: "7-Day Crash pass → prune tasks", due: "", completed: true, tag:"#Review" },
+        { title: "cut front grass", due: "", completed: false, tag:"#prepandmaintenance" },
+        { title: "pay electric", due: "", completed: false, tag:"#administrative" },
+        { title: "migrate webhook to tailscale", due: "", completed: false, tag:"#projectwork" },
       ];
     }
     function mockCrash(){
-      const now = new Date();
-      return [
-        { title: "Bank statements → sort & tag", due: addDays(now,1), completed:false, tag:"#Finance"},
-        { title: "Mom Log: weekly summary", due: addDays(now,2), completed:false, tag:"#Caregiving"},
-        { title: "Raspberry Pi: stream loop", due: addDays(now,3), completed:false, tag:"#Infra"},
-        { title: "Nova → Quick Add Shortcut", due: addDays(now,4), completed:true, tag:"#Flow"},
-      ];
+  const now = new Date();
+  const day = (n)=> addDays(now, n-1); // Day 1=today, Day 2=+1, etc.
+
+  return [
+    {
+      day: 1,
+      title: "Day 1 – Core Finances",
+      due: day(1),
+      subtasks: [
+        "Gather last 3–6 months bank statements",
+        "Gather household bills (utilities, phone, internet, HOA, insurance)",
+        "Print/save mortgage statements & lender letters"
+      ]
+    },
+    {
+      day: 2,
+      title: "Day 2 – Ledger + Food Stamps",
+      due: day(2),
+      subtasks: [
+        "Finalize expense ledger (food, gas, health, debt)",
+        "Apply for food stamps (use bank statements + ledger as proof)"
+      ]
+    },
+    {
+      day: 3,
+      title: "Day 3 – Mom’s Medical Packet (Part 1)",
+      due: day(3),
+      subtasks: [
+        "Collect hospital/clinic records (copies/printouts)",
+        "Gather prescriptions + receipts"
+      ]
+    },
+    {
+      day: 4,
+      title: "Day 4 – Mom’s Medical Packet (Part 2)",
+      due: day(4),
+      subtasks: [
+        "Write daily function notes (3–5 days is enough)",
+        "Request doctor’s letter (or confirm appointment/availability)"
+      ]
+    },
+    {
+      day: 5,
+      title: "Day 5 – Bankruptcy Packet (Part 1)",
+      due: day(5),
+      subtasks: [
+        "Gather credit card + loan statements",
+        "List creditors + balances",
+        "List assets (truck, tools, furniture, gear)"
+      ]
+    },
+    {
+      day: 6,
+      title: "Day 6 – Bankruptcy Packet (Part 2)",
+      due: day(6),
+      subtasks: [
+        "Review tax returns (last 2 years)",
+        "Align ledger with tax numbers (rough match is fine)",
+        "Organize everything into Shared Packet folder system"
+      ]
+    },
+    {
+      day: 7,
+      title: "Day 7 – Compile & Review",
+      due: day(7),
+      subtasks: [
+        "Assemble Disability packet (Mom) — submission ready",
+        "Assemble Bankruptcy packet — file-ready (hold unless needed)",
+        "Double-check folders, label clearly (“ready to send”)"
+      ]
     }
-    function mockCalendar(){
-      const now = new Date();
-      return [...Array(7)].map((_,i)=>{
-        const d = addDays(now, i);
-        const events = [];
-        if(i===0) events.push({ t:"Standup (self)", at: new Date(d.setHours(10,0)), color:"blue"});
-        if(i===1) events.push({ t:"Studio hour", at: new Date(addDays(now,1).setHours(14,0)), color:"green"});
-        if(i===2) events.push({ t:"Groceries + meal prep", at: new Date(addDays(now,2).setHours(18,0)), color:"blue"});
-        return { date: addDays(new Date(),i), events };
-      });
+  ];
+}
+
+    // --- Mock agenda data like your screenshots
+    function mockAgenda(){
+    const now = new Date();
+    const d1 = new Date(now);
+    d1.setDate(d1.getDate() + 1); // Example: Monday (tomorrow)
+    const at = (d, h, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+
+    return [
+        {
+        label: "Monday",
+        date: d1,
+        allDay: [{ title: "Recovery Focused" }],
+        events: [
+            
+            { title: "water plants", start: at(d1, 7, 30), color: "green" },
+            { title: "precor stretch circuit", start: at(d1, 9, 30), color: "blue" },
+            { title: "Health", start: at(d1, 9, 30), end: at(d1, 10, 0), color: "gray" },
+            { title: "mom dinner", start: at(d1, 19, 30), color: "purple" },
+            { title: "sleep", start: at(d1, 23, 15), color: "blue" },
+        ],
+        },
+    ];
     }
 
     // ------------ Live fetch helpers (wire these to your API later)
     async function apiGet(path){
-      // Example: return fetch(path).then(r=>r.json())
-      // For now, return mock
       if(path==="/top3") return mockTop3();
       if(path==="/crash7") return mockCrash();
-      if(path==="/calendar") return mockCalendar();
+      if(path==="/agenda") return mockAgenda();
       return [];
     }
     async function apiPost(path, payload){
-      // Example: return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-      // For demo, just pretend success:
       return { ok:true };
     }
 
@@ -345,11 +446,9 @@
         `;
         row.querySelector('.chx').addEventListener('click', async ()=>{
           row.classList.toggle('done');
-          // later: await apiPost('/reminder/toggle', { list:'Top 3', index: idx })
         });
         row.querySelector('[data-action="remove"]').addEventListener('click', async ()=>{
           row.style.opacity = .5;
-          // later: await apiPost('/reminder/delete', { list:'Top 3', index: idx })
           setTimeout(()=> row.remove(), 180);
         });
         wrap.appendChild(row);
@@ -357,50 +456,111 @@
     }
 
     function renderCrash(items){
-      const wrap = $('#crashList'); wrap.innerHTML = "";
-      items.forEach((it, idx)=>{
-        const due = it.due ? fmtDate(new Date(it.due)) : "—";
-        const row = document.createElement('div');
-        row.className = 'item' + (it.completed ? ' done' : '');
-        row.innerHTML = `
-          <label class="chx" aria-label="toggle done">
-            <span class="dot"></span>
-          </label>
-          <div>
-            <div class="title">${escapeHtml(it.title)}</div>
-            <div class="meta">Due: ${due} ${it.tag ? '· ' + escapeHtml(it.tag) : ''}</div>
-          </div>
-          <span class="tag">Crash 7</span>
-        `;
-        row.querySelector('.chx').addEventListener('click', async ()=>{
-          row.classList.toggle('done');
-          // later: await apiPost('/reminder/toggle', { list:'Crash Plan', index: idx })
-        });
-        wrap.appendChild(row);
-      });
-    }
+    const wrap = $('#crashList'); 
+    wrap.innerHTML = "";
 
-    function renderCal(days){
-      const grid = $('#calGrid'); grid.innerHTML="";
-      days.forEach(day=>{
-        const div = document.createElement('div');
-        div.className = 'day';
-        div.innerHTML = `<div class="d">${fmtDate(new Date(day.date))}</div>`;
-        if(day.events && day.events.length){
-          day.events.forEach(ev=>{
-            const pill = document.createElement('div');
-            pill.className = 'pill ' + (ev.color || 'blue');
-            pill.title = ev.t;
-            pill.textContent = `${fmtTime(new Date(ev.at))} • ${ev.t}`;
-            div.appendChild(pill);
-          });
-        } else {
-          const none = document.createElement('div');
-          none.className = 'faded'; none.textContent = '—';
-          div.appendChild(none);
+    items.forEach((it)=>{
+        const due = it.due ? fmtDate(new Date(it.due)) : "—";
+
+        // Row (day header)
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML = `
+        <label class="chx" aria-label="toggle done">
+            <span class="dot"></span>
+        </label>
+        <div>
+            <div class="title">${escapeHtml(it.title)}</div>
+            <div class="meta">Due: ${due}</div>
+        </div>
+        <div class="row">
+            <span class="tag">Crash 7</span>
+            <button class="btn ghost chev" type="button" aria-expanded="false">▸</button>
+        </div>
+        `;
+
+        // Subtask list (hidden by default)
+        const sub = document.createElement('div');
+        sub.className = 'sublist';
+        (it.subtasks || []).forEach(txt=>{
+        const li = document.createElement('div');
+        li.className = 'subitem';
+        li.innerHTML = `
+            <span class="tick" aria-hidden="true"></span>
+            <span class="subtxt">${escapeHtml(txt)}</span>
+        `;
+        sub.appendChild(li);
+        });
+
+        // Toggle
+        const toggleBtn = row.querySelector('.chev');
+        toggleBtn.addEventListener('click', ()=>{
+        const open = sub.classList.toggle('open');
+        toggleBtn.textContent = open ? '▾' : '▸';
+        toggleBtn.setAttribute('aria-expanded', String(open));
+        });
+
+        // Optional: strike-through the day when checkbox clicked
+        row.querySelector('.chx').addEventListener('click', ()=>{
+        row.classList.toggle('done');
+        });
+
+        wrap.appendChild(row);
+        wrap.appendChild(sub);
+    });
+    }
+    
+    function renderAgenda(days){
+    const wrap = document.getElementById('agenda');
+    wrap.innerHTML = "";
+    days.forEach(day=>{
+        const box = document.createElement('div');
+        box.className = 'agenda-day';
+
+        const hd = document.createElement('div');
+        hd.className = 'agenda-day-hd';
+        const dow = new Intl.DateTimeFormat(undefined, { weekday:'long'}).format(day.date);
+        const mdy = new Intl.DateTimeFormat(undefined, { month:'short', day:'numeric' }).format(day.date);
+        hd.innerHTML = `<div>${escapeHtml(day.label)}</div><div class="date">${dow}, ${mdy}</div>`;
+        box.appendChild(hd);
+
+        // All-day pills
+        if(day.allDay && day.allDay.length){
+        const ad = document.createElement('div');
+        ad.className = 'agenda-allday';
+        day.allDay.forEach(a=>{
+            const pill = document.createElement('span');
+            pill.className = 'allday-pill';
+            pill.textContent = a.title;
+            ad.appendChild(pill);
+        });
+        box.appendChild(ad);
         }
-        grid.appendChild(div);
-      });
+
+        // Timed events (sorted)
+        const list = document.createElement('div');
+        list.className = 'agenda-list';
+        (day.events||[]).sort((a,b)=> +new Date(a.start) - +new Date(b.start));
+        (day.events||[]).forEach(ev=>{
+        const startStr = fmtTime(new Date(ev.start));       // <-- exact time (e.g., 7:30 AM)
+        const endStr   = ev.end ? fmtTime(new Date(ev.end)) : null;
+
+        const row = document.createElement('div');
+        row.className = 'agenda-row';
+        row.innerHTML = `
+            <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
+            <div>
+            <div class="agenda-title">${escapeHtml(ev.title)}</div>
+            <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
+            </div>
+            <span class="agenda-badge">${startStr}</span>  <!-- matches left -->
+        `;
+        list.appendChild(row);
+        });
+        box.appendChild(list);
+
+        wrap.appendChild(box);
+    });
     }
 
     // ------------ Quick add
@@ -436,16 +596,16 @@
       const items = DEMO ? mockCrash() : await apiGet('/crash7');
       renderCrash(items);
     }
-    async function loadCalendar(){
-      const days = DEMO ? mockCalendar() : await apiGet('/calendar');
-      renderCal(days);
+    async function loadAgenda(){
+      const days = DEMO ? mockAgenda() : await apiGet('/agenda');
+      renderAgenda(days);
     }
     async function loadAll(){
       const now = new Date();
       $('#nowHint').textContent = fmtDate(now) + " · " + fmtTime(now);
       $('#rangeHint').textContent = `${fmtDate(now)} → ${fmtDate(addDays(now,6))}`;
       $('#tzHint').textContent = `Local time: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
-      await Promise.all([loadTop3(), loadCrash(), loadCalendar()]);
+      await Promise.all([loadTop3(), loadCrash(), loadAgenda()]);
     }
 
     // ------------ Misc

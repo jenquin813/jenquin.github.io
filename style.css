@@ -110,3 +110,15 @@ footer{ margin-top: 24px; color: var(--muted); font-size:12px; text-align:center
   font-size:11px; padding:3px 8px; border-radius:999px; background: rgba(110,168,254,.15); border:1px solid rgba(110,168,254,.35);
   color: #dbe9ff;
 }
+
+/* Crash subtasks (accordion) */
+.chev{ font-size:14px; border:1px solid var(--border); border-radius:8px; padding:4px 8px; }
+.sublist{
+  display:none; margin:8px 0 0 38px;
+  padding:8px 10px; border-left:2px solid var(--border);
+  display:none; gap:8px; flex-direction:column;
+}
+.sublist.open{ display:flex; }
+.subitem{ display:flex; align-items:center; gap:8px; font-size:13px; }
+.subitem .tick{ width:12px; height:12px; border-radius:3px; border:1px solid var(--border); background:rgba(0,0,0,.04); }
+.subitem.done .subtxt{ color:var(--muted); text-decoration:line-through; }
