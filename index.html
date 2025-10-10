@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>jenquin.io — Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    :root{
+      --bg: #0b0c10;
+      --panel: #111318;
+      --muted: #7b8496;
+      --text: #e9edf5;
+      --accent: #6ea8fe;
+      --accent-2: #7df2c9;
+      --danger: #ff7a7a;
+      --ok: #76ff9b;
+      --border: #20232b;
+      --shadow: 0 8px 24px rgba(0,0,0,.35);
+      --radius: 14px;
+      --radius-sm: 10px;
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg: #f6f7fb;
+        --panel: #ffffff;
+        --muted: #6b7280;
+        --text: #0f172a;
+        --accent: #2556ff;
+        --accent-2: #0ea5e9;
+        --border: #e5e7eb;
+        --shadow: 0 10px 24px rgba(0,0,0,.08);
+      }
+    }
+
+    *{ box-sizing: border-box }
+    html,body{ height:100% }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 80% -10%, rgba(110,168,254,.12), transparent 60%),
+                  radial-gradient(900px 700px at -10% 20%, rgba(125,242,201,.12), transparent 60%), var(--bg);
+      color: var(--text);
+      line-height:1.4;
+    }
+
+    /* Shell */
+    .wrap{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+
+    header{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: 16px; margin-bottom: 22px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:14px;
+    }
+    .logo{
+      width:44px; height:44px; border-radius:12px;
+      background:
+        radial-gradient(60% 100% at 30% 10%, rgba(125,242,201,.3), transparent 60%),
+        linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: var(--shadow);
+    }
+    .brand h1{
+      font-size: 20px; margin: 0;
+      letter-spacing:.4px;
+    }
+    .brand .sub{ color: var(--muted); font-size:13px; margin-top:2px }
+    .actions{ display:flex; align-items:center; gap:10px }
+    .btn{
+      appearance:none; border:1px solid var(--border); color:var(--text);
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06));
+      padding:10px 14px; border-radius:12px; cursor:pointer;
+      transition: transform .08s ease, background .2s ease, border-color .2s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.18) }
+    .btn.primary{
+      background: linear-gradient(180deg, rgba(110,168,254,.2), rgba(110,168,254,.05));
+      border-color: rgba(110,168,254,.35); color: white;
+    }
+    .btn.ghost{
+      background: transparent;
+    }
+
+    /* Cards */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+    .panel{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: clip;
+    }
+    .panel .hd{
+      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+      padding: 14px 16px; border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06));
+    }
+    .panel .hd h2{ margin:0; font-size: 15px; letter-spacing:.3px }
+    .panel .hd .hint{ color:var(--muted); font-size:12px }
+    .panel .bd{ padding: 12px 16px }
+    .panel .ft{ padding: 12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap }
+
+    /* Lists */
+    .list{ display:flex; flex-direction:column; gap:10px }
+    .item{
+      display:grid; grid-template-columns: 22px 1fr auto; align-items:center; gap: 10px;
+      padding:10px; border:1px solid var(--border); border-radius: var(--radius-sm);
+      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+    }
+    .chx{ width:18px; height:18px; border-radius:6px; border:1px solid var(--border); display:inline-grid; place-items:center; cursor:pointer }
+    .chx input{ display:none }
+    .chx .dot{ width:10px; height:10px; border-radius:3px; background:transparent; }
+    .item.done .title{ color: var(--muted); text-decoration: line-through }
+    .item.done .chx .dot{ background: var(--ok); }
+    .title{ font-size:14px; }
+    .meta{ color: var(--muted); font-size:12px }
+    .tag{
+      font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid var(--border);
+      color: var(--muted);
+    }
+    .kebab{ opacity:.7; }
+    .row{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap
+    }
+
+    /* Quick add */
+    .quick{
+      display:flex; gap:10px; align-items:center; width:100%;
+    }
+    .in{
+      flex:1; min-width: 160px;
+      border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+      background: rgba(0,0,0,.04); color: var(--text);
+    }
+    .select{
+      border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+      background: rgba(0,0,0,.04); color: var(--text);
+    }
+
+    /* Calendar */
+    .cal{
+      display:grid; grid-template-columns: repeat(7,1fr); gap:10px;
+    }
+    @media (max-width: 860px){
+      .cal{ grid-template-columns: repeat(3,1fr) }
+    }
+    @media (max-width: 560px){
+      .cal{ grid-template-columns: repeat(2,1fr) }
+    }
+    .day{
+      border:1px solid var(--border); border-radius:12px; padding:10px;
+      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+      min-height:90px;
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .day .d{ font-size:12px; color: var(--muted) }
+    .pill{
+      font-size:12px; padding:6px 8px; border-radius:10px; border:1px solid var(--border);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .pill.blue{ border-color: rgba(110,168,254,.4) }
+    .pill.green{ border-color: rgba(125,242,201,.45) }
+
+    footer{
+      margin-top: 24px; color: var(--muted); font-size:12px; text-align:center;
+    }
+
+    .sep{ height:1px; background: var(--border); margin: 8px 0 }
+    .faded{ color: var(--muted) }
+    .badge{
+      font-size:11px; padding:3px 8px; border-radius:999px; background: rgba(110,168,254,.15); border:1px solid rgba(110,168,254,.35);
+      color: #dbe9ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>jenquin.io</h1>
+          <div class="sub">Jenquin • Personal Ops Dashboard</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="toggleDemo">Demo: On</button>
+        <button class="btn" id="openReminders">Open Reminders</button>
+        <button class="btn primary" id="quickAddTop">+ Quick Add</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left column: Top 3 + Crash 7 stacked -->
+      <div class="stack">
+        <section class="panel" id="top3Panel">
+          <div class="hd">
+            <h2>Top 3 Today</h2>
+            <div class="row">
+              <span class="badge" id="dayLabel">Today</span>
+              <span class="hint" id="nowHint">—</span>
+            </div>
+          </div>
+          <div class="bd">
+            <div class="list" id="top3List"></div>
+          </div>
+          <div class="ft">
+            <form class="quick" id="top3Form">
+              <input class="in" type="text" placeholder="Quick add to Top 3…" name="title" required />
+              <button class="btn" type="submit">Add</button>
+              <button class="btn ghost" type="button" id="revealTop3">Reveal in Reminders</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel" id="crashPanel" style="margin-top:18px;">
+          <div class="hd">
+            <h2>7-Day Crash Plan</h2>
+            <div class="hint" id="rangeHint">—</div>
+          </div>
+          <div class="bd">
+            <div class="list" id="crashList"></div>
+          </div>
+          <div class="ft">
+            <button class="btn ghost" id="revealCrash">Reveal Crash Plan</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right column: Calendar glance -->
+      <section class="panel">
+        <div class="hd">
+          <h2>Calendar (Next 7 Days)</h2>
+          <div class="hint" id="tzHint">—</div>
+        </div>
+        <div class="bd">
+          <div class="cal" id="calGrid"></div>
+        </div>
+        <div class="ft">
+          <button class="btn ghost" id="openCalendar">Open Calendar</button>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      © <span id="year"></span> jenquin.io • v1 preview · Data stays in Apple apps · Clicks may open native apps
+    </footer>
+  </div>
+
+  <script>
+    // ------------ Utilities
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+    function fmtTime(d){
+      return new Intl.DateTimeFormat(undefined, { hour:'numeric', minute:'2-digit' }).format(d);
+    }
+    function fmtDate(d){
+      return new Intl.DateTimeFormat(undefined, { month:'short', day:'numeric' }).format(d);
+    }
+    function addDays(d, n){ const c = new Date(d); c.setDate(c.getDate()+n); return c; }
+
+    // ------------ Demo toggle (mock vs live fetch)
+    let DEMO = true;
+    $('#toggleDemo').addEventListener('click', () => {
+      DEMO = !DEMO;
+      $('#toggleDemo').textContent = `Demo: ${DEMO ? 'On' : 'Off'}`;
+      loadAll();
+    });
+
+    // ------------ Mock data
+    function mockTop3(){
+      return [
+        { title: "Ship Jenquin v1 page", due: "", completed: false, tag:"#Admin" },
+        { title: "Record 'Album Stream' bumper", due: "", completed: false, tag:"#Creative" },
+        { title: "7-Day Crash pass → prune tasks", due: "", completed: true, tag:"#Review" },
+      ];
+    }
+    function mockCrash(){
+      const now = new Date();
+      return [
+        { title: "Bank statements → sort & tag", due: addDays(now,1), completed:false, tag:"#Finance"},
+        { title: "Mom Log: weekly summary", due: addDays(now,2), completed:false, tag:"#Caregiving"},
+        { title: "Raspberry Pi: stream loop", due: addDays(now,3), completed:false, tag:"#Infra"},
+        { title: "Nova → Quick Add Shortcut", due: addDays(now,4), completed:true, tag:"#Flow"},
+      ];
+    }
+    function mockCalendar(){
+      const now = new Date();
+      return [...Array(7)].map((_,i)=>{
+        const d = addDays(now, i);
+        const events = [];
+        if(i===0) events.push({ t:"Standup (self)", at: new Date(d.setHours(10,0)), color:"blue"});
+        if(i===1) events.push({ t:"Studio hour", at: new Date(addDays(now,1).setHours(14,0)), color:"green"});
+        if(i===2) events.push({ t:"Groceries + meal prep", at: new Date(addDays(now,2).setHours(18,0)), color:"blue"});
+        return { date: addDays(new Date(),i), events };
+      });
+    }
+
+    // ------------ Live fetch helpers (wire these to your API later)
+    async function apiGet(path){
+      // Example: return fetch(path).then(r=>r.json())
+      // For now, return mock
+      if(path==="/top3") return mockTop3();
+      if(path==="/crash7") return mockCrash();
+      if(path==="/calendar") return mockCalendar();
+      return [];
+    }
+    async function apiPost(path, payload){
+      // Example: return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      // For demo, just pretend success:
+      return { ok:true };
+    }
+
+    // ------------ Renderers
+    function renderTop3(items){
+      const wrap = $('#top3List'); wrap.innerHTML = "";
+      items.forEach((it, idx)=>{
+        const row = document.createElement('div');
+        row.className = 'item' + (it.completed ? ' done' : '');
+        row.innerHTML = `
+          <label class="chx" aria-label="toggle done">
+            <span class="dot"></span>
+          </label>
+          <div>
+            <div class="title">${escapeHtml(it.title)}</div>
+            <div class="meta">${it.tag ? escapeHtml(it.tag) : ''}</div>
+          </div>
+          <div class="row">
+            <span class="tag">Top 3</span>
+            <button class="btn ghost kebab" data-action="remove" title="Remove">⋯</button>
+          </div>
+        `;
+        row.querySelector('.chx').addEventListener('click', async ()=>{
+          row.classList.toggle('done');
+          // later: await apiPost('/reminder/toggle', { list:'Top 3', index: idx })
+        });
+        row.querySelector('[data-action="remove"]').addEventListener('click', async ()=>{
+          row.style.opacity = .5;
+          // later: await apiPost('/reminder/delete', { list:'Top 3', index: idx })
+          setTimeout(()=> row.remove(), 180);
+        });
+        wrap.appendChild(row);
+      });
+    }
+
+    function renderCrash(items){
+      const wrap = $('#crashList'); wrap.innerHTML = "";
+      items.forEach((it, idx)=>{
+        const due = it.due ? fmtDate(new Date(it.due)) : "—";
+        const row = document.createElement('div');
+        row.className = 'item' + (it.completed ? ' done' : '');
+        row.innerHTML = `
+          <label class="chx" aria-label="toggle done">
+            <span class="dot"></span>
+          </label>
+          <div>
+            <div class="title">${escapeHtml(it.title)}</div>
+            <div class="meta">Due: ${due} ${it.tag ? '· ' + escapeHtml(it.tag) : ''}</div>
+          </div>
+          <span class="tag">Crash 7</span>
+        `;
+        row.querySelector('.chx').addEventListener('click', async ()=>{
+          row.classList.toggle('done');
+          // later: await apiPost('/reminder/toggle', { list:'Crash Plan', index: idx })
+        });
+        wrap.appendChild(row);
+      });
+    }
+
+    function renderCal(days){
+      const grid = $('#calGrid'); grid.innerHTML="";
+      days.forEach(day=>{
+        const div = document.createElement('div');
+        div.className = 'day';
+        div.innerHTML = `<div class="d">${fmtDate(new Date(day.date))}</div>`;
+        if(day.events && day.events.length){
+          day.events.forEach(ev=>{
+            const pill = document.createElement('div');
+            pill.className = 'pill ' + (ev.color || 'blue');
+            pill.title = ev.t;
+            pill.textContent = `${fmtTime(new Date(ev.at))} • ${ev.t}`;
+            div.appendChild(pill);
+          });
+        } else {
+          const none = document.createElement('div');
+          none.className = 'faded'; none.textContent = '—';
+          div.appendChild(none);
+        }
+        grid.appendChild(div);
+      });
+    }
+
+    // ------------ Quick add
+    $('#top3Form').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const title = String(fd.get('title')||'').trim();
+      if(!title) return;
+      if(DEMO){
+        const items = mockTop3();
+        items.unshift({title, due:"", completed:false, tag:"#QuickAdd"});
+        renderTop3(items);
+      }else{
+        await apiPost('/reminder', { list:"Top 3", title });
+        await loadTop3();
+      }
+      e.target.reset();
+    });
+
+    // ------------ Actions (simulate opening native apps)
+    $('#revealTop3').addEventListener('click', ()=> alert('Would call /open { list:"Top 3" } → opens Reminders'));
+    $('#revealCrash').addEventListener('click', ()=> alert('Would call /open { list:"Crash Plan" } → opens Reminders'));
+    $('#openCalendar').addEventListener('click', ()=> alert('Would call /open-calendar → opens Calendar'));
+    $('#openReminders').addEventListener('click', ()=> alert('Opening Reminders (simulated)…'));
+    $('#quickAddTop').addEventListener('click', ()=> $('.in[name="title"]').focus());
+
+    // ------------ Loaders
+    async function loadTop3(){
+      const items = DEMO ? mockTop3() : await apiGet('/top3');
+      renderTop3(items);
+    }
+    async function loadCrash(){
+      const items = DEMO ? mockCrash() : await apiGet('/crash7');
+      renderCrash(items);
+    }
+    async function loadCalendar(){
+      const days = DEMO ? mockCalendar() : await apiGet('/calendar');
+      renderCal(days);
+    }
+    async function loadAll(){
+      const now = new Date();
+      $('#nowHint').textContent = fmtDate(now) + " · " + fmtTime(now);
+      $('#rangeHint').textContent = `${fmtDate(now)} → ${fmtDate(addDays(now,6))}`;
+      $('#tzHint').textContent = `Local time: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+      await Promise.all([loadTop3(), loadCrash(), loadCalendar()]);
+    }
+
+    // ------------ Misc
+    $('#year').textContent = new Date().getFullYear();
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
+
+    // Init
+    loadAll();
+  </script>
+</body>
+</html>
