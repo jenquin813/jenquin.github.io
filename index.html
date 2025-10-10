@@ -210,6 +210,23 @@
     .subitem{ display:flex; align-items:center; gap:8px; font-size:13px; }
     .subitem .tick{ width:12px; height:12px; border-radius:3px; border:1px solid var(--border); background:rgba(0,0,0,.04); }
     .subitem.done .subtxt{ color:var(--muted); text-decoration:line-through; }
+    
+    .item .main{
+      flex:1;
+    }
+    .item .chev{
+      margin-left:auto;
+      font-size:16px;
+      border:none;
+      background:transparent;
+      color:var(--muted);
+      cursor:pointer;
+      padding:6px 10px;
+    }
+    .item .chev:hover{
+      color:var(--accent);
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
@@ -456,58 +473,55 @@
     }
 
     function renderCrash(items){
-    const wrap = $('#crashList'); 
-    wrap.innerHTML = "";
+      const wrap = $('#crashList');
+      wrap.innerHTML = "";
 
-    items.forEach((it)=>{
+      items.forEach((it)=>{
         const due = it.due ? fmtDate(new Date(it.due)) : "—";
 
         // Row (day header)
         const row = document.createElement('div');
         row.className = 'item';
         row.innerHTML = `
-        <label class="chx" aria-label="toggle done">
+          <label class="chx" aria-label="toggle done">
             <span class="dot"></span>
-        </label>
-        <div>
+          </label>
+          <div class="main">
             <div class="title">${escapeHtml(it.title)}</div>
             <div class="meta">Due: ${due}</div>
-        </div>
-        <div class="row">
-            <span class="tag">Crash 7</span>
-            <button class="btn ghost chev" type="button" aria-expanded="false">▸</button>
-        </div>
+          </div>
+          <button class="btn ghost chev" type="button" aria-expanded="false">▸</button>
         `;
 
         // Subtask list (hidden by default)
         const sub = document.createElement('div');
         sub.className = 'sublist';
         (it.subtasks || []).forEach(txt=>{
-        const li = document.createElement('div');
-        li.className = 'subitem';
-        li.innerHTML = `
+          const li = document.createElement('div');
+          li.className = 'subitem';
+          li.innerHTML = `
             <span class="tick" aria-hidden="true"></span>
             <span class="subtxt">${escapeHtml(txt)}</span>
-        `;
-        sub.appendChild(li);
+          `;
+          sub.appendChild(li);
         });
 
-        // Toggle
+        // Toggle subtasks open/closed
         const toggleBtn = row.querySelector('.chev');
         toggleBtn.addEventListener('click', ()=>{
-        const open = sub.classList.toggle('open');
-        toggleBtn.textContent = open ? '▾' : '▸';
-        toggleBtn.setAttribute('aria-expanded', String(open));
+          const open = sub.classList.toggle('open');
+          toggleBtn.textContent = open ? '▾' : '▸';
+          toggleBtn.setAttribute('aria-expanded', String(open));
         });
 
-        // Optional: strike-through the day when checkbox clicked
+        // Mark day as done
         row.querySelector('.chx').addEventListener('click', ()=>{
-        row.classList.toggle('done');
+          row.classList.toggle('done');
         });
 
         wrap.appendChild(row);
         wrap.appendChild(sub);
-    });
+      });
     }
     
     function renderAgenda(days){
