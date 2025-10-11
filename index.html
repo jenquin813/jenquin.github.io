@@ -255,23 +255,79 @@
     .mm-today{ outline:2px solid var(--accent); }
     .mm-sel{ background: rgba(110,168,254,.18); border-color: rgba(110,168,254,.45); }
     
+    .month-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .month-nav h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      min-width: 100px;
+    }
+    
     .mini-row{
       display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:stretch; width:100%;
+      height: 180px;  /* match the clock box height */
     }
     @media (max-width: 860px){
       .mini-row{ grid-template-columns: 1fr; } /* stack on small screens */
     }
 
-    /* miniMonth already exists; keep it. You can shrink cells a touch: */
-    #miniMonth{ width:100%; }
-    .mm-cell{ padding:5px 0; font-size:12px; }
+    /* Updated miniMonth styles */
+    #miniMonth {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px 6px 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+      box-shadow: var(--shadow);
+    }
+
+    /* Month header (keep small) */
+    .mm-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px; /* tighten spacing */
+      font-size: 11px;
+    }
+    .mm-nav-btn {
+      font-size: 11px;
+      padding: 2px 6px;
+    }
+    .mm-nav-title {
+      font-size: 11px;
+    }
+
+    /* Days grid scaled down */
+    #mmGrid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      flex: 1;
+    }
+    .mm-cell {
+      font-size: 10px;
+      padding: 3px 0;
+    }
 
     /* Clock card */
     #miniClock{
       display:flex; flex-direction:column; justify-content:center; align-items:center;
       border:1px solid var(--border); border-radius:12px;
       background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
-      box-shadow: var(--shadow); min-height:180px;
+      box-shadow: var(--shadow); height:100%;
+      font-size: 48px;
     }
     .clk-time{
       font-variant-numeric: tabular-nums;
@@ -291,7 +347,6 @@
         </div>
       </div>
       <div class="actions">
-        <button class="btn ghost" id="toggleDemo">Demo: On</button>
         <button class="btn" id="openReminders">Open Reminders</button>
         <button class="btn primary" id="quickAddTop">+ Quick Add</button>
       </div>
@@ -343,7 +398,14 @@
         </div>
         <div class="ft">
           <div class="mini-row">
-            <div id="miniMonth"></div>
+            <div id="miniMonth">
+              <div class="mm-nav">
+                <button class="mm-nav-btn" id="monthPrev" aria-label="Previous month">◄</button>
+                <span class="mm-nav-title" id="monthTitle">Month</span>
+                <button class="mm-nav-btn" id="monthNext" aria-label="Next month">►</button>
+              </div>
+              <div id="mmGrid"></div>
+            </div>
             <div id="miniClock" aria-label="Current time">
               <div class="clk-time">--:--</div>
               <div class="clk-sub">—</div>
@@ -376,18 +438,9 @@
     const TODAY = startOfDay(new Date());
     let SELECTED = TODAY; // ← the day your FlowOS panel shows
 
-    // ------------ Demo toggle (mock vs live fetch)
-    let DEMO = true;
-    document.addEventListener('DOMContentLoaded', () => {
-      const toggleDemo = $('#toggleDemo');
-      if (toggleDemo) {
-        toggleDemo.addEventListener('click', () => {
-          DEMO = !DEMO;
-          toggleDemo.textContent = `Demo: ${DEMO ? 'On' : 'Off'}`;
-          loadAll();
-        });
-      }
-    });
+    // ------------ Demo mode via URL parameter
+    // Visit site normally for live mode, add ?demo=1 for demo mode
+    let DEMO = new URLSearchParams(window.location.search).has('demo');
 
     // ------------ Mock data
     function mockTop3(){
@@ -706,13 +759,32 @@
       window.__clkTimer = setInterval(renderClockOnce, SHOW_SECONDS ? 1000 : 30000);
     }
 
+    function updateMonthTitle(date) {
+      const monthTitle = document.getElementById('monthTitle');
+      if (monthTitle) {
+        const monthYearFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+        monthTitle.textContent = monthYearFmt.format(date);
+      }
+    }
+    
     function renderMiniMonth(anchor = SELECTED){
       const mount = document.getElementById('miniMonth');
       if(!mount) return;
-      mount.innerHTML = "";
+      
+      // Get or create the grid container
+      let grid = document.getElementById('mmGrid');
+      if (!grid) {
+        grid = document.createElement('div');
+        grid.id = 'mmGrid';
+        mount.appendChild(grid);
+      }
+      grid.innerHTML = "";
 
       const monthStart = startOfMonth(anchor);
       const monthEnd   = endOfMonth(anchor);
+      
+      // Update month title
+      updateMonthTitle(anchor);
       // Find grid start on Sunday (or your locale's week start)
       const gridStart = addDays(monthStart, -monthStart.getDay());
       // Headers
@@ -720,7 +792,7 @@
         const h = document.createElement('div');
         h.className = 'mm-cell mm-head';
         h.textContent = ch;
-        mount.appendChild(h);
+        grid.appendChild(h);
       });
       // 6 weeks * 7 days
       for(let i=0;i<42;i++){
@@ -737,27 +809,53 @@
           loadAgenda();           // re-render agenda for that day
           renderMiniMonth(SELECTED); // re-render month selection
         });
-        mount.appendChild(cell);
+        grid.appendChild(cell);
       }
     }
     
-    // Setup day navigation after DOM is loaded
+    // Setup day and month navigation after DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {
-      const prevBtn = document.getElementById('dayPrev');
-      const nextBtn = document.getElementById('dayNext');
+      const dayPrevBtn = document.getElementById('dayPrev');
+      const dayNextBtn = document.getElementById('dayNext');
+      const monthPrevBtn = document.getElementById('monthPrev');
+      const monthNextBtn = document.getElementById('monthNext');
       
-      if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
+      if (dayPrevBtn) {
+        dayPrevBtn.addEventListener('click', () => {
           SELECTED = addDays(SELECTED, -1);
           loadAgenda();
           renderMiniMonth(SELECTED);
         });
       }
       
-      if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
+      if (dayNextBtn) {
+        dayNextBtn.addEventListener('click', () => {
           SELECTED = addDays(SELECTED, +1);
           loadAgenda();
+          renderMiniMonth(SELECTED);
+        });
+      }
+      
+      if (monthPrevBtn) {
+        monthPrevBtn.addEventListener('click', () => {
+          // Go to previous month (same day)
+          const currentDay = SELECTED.getDate();
+          SELECTED = new Date(SELECTED.getFullYear(), SELECTED.getMonth() - 1, 1);
+          // Try to maintain the same day of month if possible
+          const lastDayOfMonth = new Date(SELECTED.getFullYear(), SELECTED.getMonth() + 1, 0).getDate();
+          SELECTED.setDate(Math.min(currentDay, lastDayOfMonth));
+          renderMiniMonth(SELECTED);
+        });
+      }
+      
+      if (monthNextBtn) {
+        monthNextBtn.addEventListener('click', () => {
+          // Go to next month (same day)
+          const currentDay = SELECTED.getDate();
+          SELECTED = new Date(SELECTED.getFullYear(), SELECTED.getMonth() + 1, 1);
+          // Try to maintain the same day of month if possible
+          const lastDayOfMonth = new Date(SELECTED.getFullYear(), SELECTED.getMonth() + 1, 0).getDate();
+          SELECTED.setDate(Math.min(currentDay, lastDayOfMonth));
           renderMiniMonth(SELECTED);
         });
       }
