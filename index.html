@@ -254,6 +254,30 @@
     .mm-out{ opacity:.45 }
     .mm-today{ outline:2px solid var(--accent); }
     .mm-sel{ background: rgba(110,168,254,.18); border-color: rgba(110,168,254,.45); }
+    
+    .mini-row{
+      display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:stretch; width:100%;
+    }
+    @media (max-width: 860px){
+      .mini-row{ grid-template-columns: 1fr; } /* stack on small screens */
+    }
+
+    /* miniMonth already exists; keep it. You can shrink cells a touch: */
+    #miniMonth{ width:100%; }
+    .mm-cell{ padding:5px 0; font-size:12px; }
+
+    /* Clock card */
+    #miniClock{
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+      border:1px solid var(--border); border-radius:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+      box-shadow: var(--shadow); min-height:180px;
+    }
+    .clk-time{
+      font-variant-numeric: tabular-nums;
+      font-size:46px; line-height:1; letter-spacing:1px;
+    }
+    .clk-sub{ margin-top:6px; color:var(--muted); font-size:12px; }
   </style>
 </head>
 <body>
@@ -318,7 +342,13 @@
           <div id="agenda"></div>
         </div>
         <div class="ft">
-          <div id="miniMonth"></div>
+          <div class="mini-row">
+            <div id="miniMonth"></div>
+            <div id="miniClock" aria-label="Current time">
+              <div class="clk-time">--:--</div>
+              <div class="clk-sub">—</div>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -653,6 +683,29 @@
     
     function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
     function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+    
+    // Big digital clock (minutes; flip to seconds if you want)
+    const SHOW_SECONDS = false;
+
+    function renderClockOnce(){
+      const box = document.getElementById('miniClock');
+      if(!box) return;
+      const now = new Date();
+      const timeFmt = new Intl.DateTimeFormat(undefined, {
+        hour: '2-digit', minute: '2-digit', ...(SHOW_SECONDS ? { second: '2-digit' } : {})
+      });
+      const dayFmt  = new Intl.DateTimeFormat(undefined, { weekday: 'long' });
+
+      box.querySelector('.clk-time').textContent = timeFmt.format(now);
+      box.querySelector('.clk-sub').textContent  = dayFmt.format(now);
+    }
+
+    function startClock(){
+      renderClockOnce();
+      clearInterval(window.__clkTimer);
+      // Update every second if showing seconds; otherwise every 30s to save cycles
+      window.__clkTimer = setInterval(renderClockOnce, SHOW_SECONDS ? 1000 : 30000);
+    }
 
     function renderMiniMonth(anchor = SELECTED){
       const mount = document.getElementById('miniMonth');
@@ -735,6 +788,7 @@
       
       await Promise.all([loadTop3(), loadCrash(), loadAgenda()]);
       renderMiniMonth(SELECTED);
+      startClock();
     }
 
     // ------------ Misc
