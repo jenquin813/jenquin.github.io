@@ -649,14 +649,17 @@
       lane.className = 'allday-lane';
       lane.setAttribute('data-alldaylane','1');
 
-      // fill all-day items horizontally to the right
+      // fill all-day items horizontally to the right, excluding the focus label
+      const focusLabel = day.focus || "";
       if (day.allDay && day.allDay.length){
-        day.allDay.forEach(a=>{
-          const pill = document.createElement('span');
-          pill.className = 'allday-pill';
-          pill.textContent = a.title;
-          lane.appendChild(pill);
-        });
+        (day.allDay || [])
+          .filter(a => a && a.title && a.title !== focusLabel && !/^\[FOCUS\]/i.test(a.title))
+          .forEach(a=>{
+            const pill = document.createElement('span');
+            pill.className = 'allday-pill';
+            pill.textContent = a.title;
+            lane.appendChild(pill);
+          });
       }
 
       row.appendChild(areaSlot);
@@ -809,7 +812,11 @@
       return [{
         label: weekday,
         date: d0,
-        allDay: [{ title:"Recovery Focused" }],
+        focus: "Recovery Day",          // ← focus lives here
+        allDay: [                       // ← birthdays, etc. (no focus here)
+          { title: "" },
+          // { title: "Pay bills" },
+        ],
         events: [
           { title:"water plants",          start: at(d0,7,30),   color:"green" },
           { title:"precor stretch circuit",start: at(d0,9,30),   color:"blue" },
@@ -937,7 +944,8 @@
         box.appendChild(hd);
 
         // Replace left header text with focus (if present)
-        const focus = day.focus || (day.allDay?.[0]?.title || "");
+        // use ONLY the explicit focus
+        const focus = day.focus || null;
         if (focus){
           hd.firstElementChild.textContent = focus;
           const right = hd.querySelector('.date');
