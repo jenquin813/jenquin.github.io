@@ -274,11 +274,11 @@
             <form class="quick" id="top3Form">
               <input class="in" type="text" placeholder="Quick add to Top 3…" name="title" required />
               <button class="btn" type="submit">Add</button>
-              <button class="btn ghost" type="button" id="revealTop3">Reveal in Reminders</button>
             </form>
           </div>
         </section>
 
+        <!-- Crash Plan (no footer) -->
         <section class="panel" id="crashPanel" style="margin-top:18px;">
           <div class="hd">
             <h2>7-Day Crash Plan</h2>
@@ -286,9 +286,6 @@
           </div>
           <div class="bd">
             <div class="list" id="crashList"></div>
-          </div>
-          <div class="ft">
-            <button class="btn ghost" id="revealCrash">Reveal Crash Plan</button>
           </div>
         </section>
       </div>
@@ -602,8 +599,6 @@
     });
 
     // ------------ Actions (simulate opening native apps)
-    $('#revealTop3').addEventListener('click', ()=> alert('Would call /open { list:"Top 3" } → opens Reminders'));
-    $('#revealCrash').addEventListener('click', ()=> alert('Would call /open { list:"Crash Plan" } → opens Reminders'));
     $('#openCalendar').addEventListener('click', ()=> alert('Would call /open-calendar → opens Calendar'));
     $('#openReminders').addEventListener('click', ()=> alert('Opening Reminders (simulated)…'));
     $('#quickAddTop').addEventListener('click', ()=> $('.in[name="title"]').focus());
