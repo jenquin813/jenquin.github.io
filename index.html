@@ -233,27 +233,39 @@
       border:1px solid var(--border); color: var(--muted);
     }
 
-    /* Agenda: done state matches .item.done */
-    .agenda-row.done .agenda-title{
-      color: var(--muted);
-      text-decoration: line-through;
-    }
-    .agenda-row .chx-agenda{
+    /* Agenda checkbox = exactly like Top 3 / Crash */
+    .agenda-row .chx{
       width:18px; height:18px;
       border-radius:6px;
       border:1px solid var(--border);
       display:inline-grid; place-items:center;
       cursor:pointer;
+      background: transparent;            /* <- no gray fill */
     }
 
-    /* Same green fill when checked */
-    .agenda-row.done .chx-agenda .dot{
-      width:10px; height:10px; border-radius:3px;
+    /* Hide the inner square when unchecked (no "box in box") */
+    .agenda-row .chx .dot{
+      width:10px; height:10px;
+      border-radius:3px;
+      background: transparent;
+      border: none;                        /* <- ensure no outline */
+      opacity: 0;                          /* <- invisible when unchecked */
+    }
+
+    /* Checked state = same green fill you already use */
+    .agenda-row.done .chx .dot{
+      opacity: 1;
       background: var(--ok);
     }
 
+    /* Strike-through title when done (already added, keep) */
+    .agenda-row.done .agenda-title{
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+
     /* Optional: nudge the right cell a hair */
-    .agenda-row > .chx-agenda{ margin-left: 8px; }
+    .agenda-row > .chx{ margin-left: 8px; }
 
     /* All-day lane: single line, scrolls left→right */
     .agenda-allday{
@@ -1011,7 +1023,7 @@
               <div class="agenda-title">${escapeHtml(ev.title)}</div>
               <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
             </div>
-            <label class="chx-agenda" aria-label="Mark ${escapeHtml(ev.title)} done">
+            <label class="chx" aria-label="Mark ${escapeHtml(ev.title)} done">
               <span class="dot"></span>
             </label>
           `;
@@ -1021,7 +1033,7 @@
           if (doneMap[key]) row.classList.add('done');
 
           // toggle done on click (checkbox at right)
-          row.querySelector('.chx-agenda').addEventListener('click', ()=>{
+          row.querySelector('.chx').addEventListener('click', ()=>{
             row.classList.toggle('done');
             const m = getAgendaDone();
             m[key] = row.classList.contains('done');
