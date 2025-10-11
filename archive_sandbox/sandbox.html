@@ -1,0 +1,166 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Zone Tracker Wireframe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#0b0c10; --panel:#111318; --text:#e9edf5; --muted:#7b8496; --border:#20232b;
+    --ok:#76ff9b;
+    --accent:#6ea8fe; --accent-2:#7df2c9;
+  }
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 ui-sans-serif,system-ui}
+  .panel{max-width:920px;margin:24px auto;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--panel)}
+  .hd{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .hd h2{margin:0;font-size:14px;letter-spacing:.3px}
+  /* --- Focus / zone tracker --- */
+  .zone-wrap{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+  .zone-bar{
+    position:relative;height:28px;border:1px solid var(--border);border-radius:999px;
+    background:linear-gradient(180deg,rgba(255,255,255,.01),rgba(0,0,0,.06));
+    overflow:hidden;
+  }
+  /* subtle segment bands */
+  .zone-seg{position:absolute;top:0;bottom:0;opacity:.18}
+  .seg-flex{background:#8aa0ff}
+  .seg-review{background:#ffcc66}
+  .seg-prep{background:#7df2c9}
+  .seg-rest{background:#b38aff}
+  /* progress fill */
+  .zone-fill{
+    position:absolute;inset:0 auto 0 0;width:0%;
+    background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+    backdrop-filter:saturate(120%) brightness(110%);
+  }
+  /* glow dot at "now" */
+  .zone-dot{
+    position:absolute;top:50%;transform:translate(-50%,-50%);
+    width:8px;height:8px;border-radius:50%;
+    background:rgba(255,255,255,.85);box-shadow:0 0 8px rgba(255,255,255,.45);
+    left:0%;
+  }
+  /* labels row: current + upcoming */
+  .zone-labels{display:flex;gap:8px;align-items:center}
+  .pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 10px;border:1px solid var(--border);border-radius:999px;
+    background:linear-gradient(180deg,rgba(255,255,255,.01),rgba(0,0,0,.05)); color:var(--muted);
+    white-space:nowrap;font-size:12px;
+  }
+  .pill.current{border-color:rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(0,0,0,.12))}
+  /* all-day row */
+  .allday{display:flex;gap:8px;align-items:center;overflow:auto}
+  .allday .pill{font-size:12px}
+  /* agenda list (just for placement) */
+  .row{display:grid;grid-template-columns:20px 1fr auto;gap:10px;align-items:center;
+       padding:10px;border-top:1px solid var(--border)}
+  .row:first-child{border-top:none}
+  .dot{width:10px;height:10px;border-radius:50%;background:#6ea8fe;opacity:.9}
+  .time{color:var(--muted);font-size:12px}
+</style>
+
+<div class="panel">
+  <div class="hd"><h2>Saturday • Oct 11</h2></div>
+
+  <!-- Focus + zone tracker -->
+  <div class="zone-wrap">
+    <div class="zone-bar" id="zoneBar">
+      <!-- segments (left→right) will be positioned by JS -->
+      <div class="zone-fill" id="zoneFill"></div>
+      <div class="zone-dot" id="zoneDot"></div>
+    </div>
+    <!-- labels: current + upcoming -->
+    <div class="zone-labels" id="zoneLabels"></div>
+    <!-- all-day items -->
+    <div class="allday" id="alldayLane"></div>
+  </div>
+
+  <!-- Minimal agenda just for context -->
+  <div class="row"><span class="dot"></span><div>water plants<br><span class="time">7:30 AM</span></div><span class="time">7:30 AM</span></div>
+  <div class="row"><span class="dot" style="background:#b38aff"></span><div>precor stretch circuit<br><span class="time">9:30 AM</span></div><span class="time">9:30 AM</span></div>
+  <div class="row"><span class="dot" style="background:#9aa3b2"></span><div>grocery shop<br><span class="time">11:00 AM–12:00 PM</span></div><span class="time">11:00 AM</span></div>
+</div>
+
+<script>
+  // ------- mock day + zones (change times to see effect)
+  const day = new Date(); // today
+  const at = (h,m=0)=> new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m);
+  const ZONES = [
+    { label:"Flex",            start: at(8,  0), end: at(12, 0), cls:"seg-flex"   },
+    { label:"Review",          start: at(12, 0), end: at(18,30), cls:"seg-review" },
+    { label:"Prep",            start: at(18,30), end: at(19,30), cls:"seg-prep"   },
+    { label:"Rest",            start: at(19,30), end: at(21, 0), cls:"seg-rest"   },
+  ];
+  const ALLDAY = ["Kris’ Birthday", "Anniversary"];
+
+  const bar = document.getElementById('zoneBar');
+  const fill = document.getElementById('zoneFill');
+  const dot  = document.getElementById('zoneDot');
+  const labels = document.getElementById('zoneLabels');
+  const allday = document.getElementById('alldayLane');
+
+  // render segments as absolute blocks
+  function renderSegments(){
+    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0,0,0);
+    const dayEnd   = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 24,0,0);
+    const totalMs = dayEnd - dayStart;
+
+    ZONES.forEach(z=>{
+      const left = ((z.start - dayStart)/totalMs) * 100;
+      const width = ((z.end - z.start)/totalMs) * 100;
+      const seg = document.createElement('div');
+      seg.className = `zone-seg ${z.cls}`;
+      seg.style.left = left + '%';
+      seg.style.width = width + '%';
+      bar.appendChild(seg);
+    });
+  }
+
+  // compute current + upcoming (simple)
+  function currentZone(now=new Date()){
+    return ZONES.find(z => now >= z.start && now < z.end) || null;
+  }
+  function upcomingZones(now=new Date(), n=3){
+    const ups = ZONES.filter(z => z.start > now).map(z=>z.label);
+    return ups.slice(0, n);
+  }
+
+  function updateBar(){
+    const now = new Date();
+    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0,0,0);
+    const dayEnd   = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 24,0,0);
+    const totalMs = dayEnd - dayStart;
+    const pct = Math.max(0, Math.min(1, (now - dayStart)/totalMs)) * 100;
+
+    fill.style.width = pct + '%';
+    dot.style.left = pct + '%';
+
+    // labels row: current + next two
+    labels.innerHTML = '';
+    const cur = currentZone(now);
+    const pill = (txt,isCurrent=false)=>{
+      const el = document.createElement('span');
+      el.className = 'pill' + (isCurrent ? ' current' : '');
+      el.textContent = txt;
+      return el;
+    };
+    labels.appendChild(pill(cur ? cur.label : 'Flex', true));
+    upcomingZones(now, 2).forEach(lbl => labels.appendChild(pill(lbl)));
+  }
+
+  function renderAllday(){
+    allday.innerHTML = '';
+    ALLDAY.forEach(t=>{
+      const p = document.createElement('span');
+      p.className = 'pill';
+      p.textContent = t;
+      allday.appendChild(p);
+    });
+  }
+
+  renderSegments();
+  renderAllday();
+  updateBar();
+  // gentle updates
+  setInterval(updateBar, 60000);
+  window.addEventListener('resize', updateBar);
+</script>

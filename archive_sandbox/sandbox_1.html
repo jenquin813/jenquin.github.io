@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agenda Card • Sandbox</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  /* ==== your design tokens ==== */
+  :root{
+    --bg:#0b0c10; --panel:#111318; --muted:#7b8496; --text:#e9edf5;
+    --accent:#6ea8fe; --accent-2:#7df2c9; --ok:#76ff9b; --border:#20232b;
+    --shadow:0 8px 24px rgba(0,0,0,.35);
+    --radius:14px; --radius-sm:10px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f6f7fb; --panel:#ffffff; --muted:#6b7280; --text:#0f172a;
+      --accent:#2556ff; --accent-2:#0ea5e9; --border:#e5e7eb;
+      --shadow:0 10px 24px rgba(0,0,0,.08);
+    }
+  }
+
+  /* page shell just to center the card */
+  html,body{height:100%}
+  body{
+    margin:0; background:
+      radial-gradient(1200px 800px at 80% -10%, rgba(110,168,254,.12), transparent 60%),
+      radial-gradient(900px 700px at -10% 20%, rgba(125,242,201,.12), transparent 60%),
+      var(--bg);
+    color:var(--text); font:14px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+  }
+  .wrap{max-width:860px;margin:32px auto;padding:0 16px}
+
+  /* ======= Agenda card (copied to match your look) ======= */
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow); overflow:clip;
+  }
+  .panel .hd{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:14px 16px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06));
+  }
+  .panel .hd h2{margin:0;font-size:15px;letter-spacing:.3px}
+  .panel .bd{padding:12px 16px}
+
+  .agenda-day{
+    border:1px solid var(--border); border-radius:var(--radius);
+    background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+    overflow:hidden; position:relative;
+  }
+  .agenda-day-hd{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 12px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06));
+    font-size:13px; letter-spacing:.2px;
+  }
+  .agenda-day-hd .date{ color:var(--muted) }
+  .agenda-day-hd > :first-child{
+    display:inline-block; padding:6px 10px; border:1px solid rgba(255,255,255,.05);
+    border-radius:999px; background:linear-gradient(180deg, rgba(255,255,255,.015), rgba(0,0,0,.12));
+    font-weight:400; font-size:12px; letter-spacing:.2px; color:var(--muted);
+    box-shadow:inset 0 0 2px rgba(0,0,0,.25);
+  }
+  @media (prefers-color-scheme: light){
+    .agenda-day-hd > :first-child{
+      border:1px solid rgba(0,0,0,.05);
+      background:linear-gradient(180deg, rgba(255,255,255,.6), rgba(0,0,0,.02));
+      color:var(--muted);
+    }
+  }
+
+  /* live horizontal 'now' line */
+  .now-indicator{
+    position:absolute; left:12px; right:12px; height:2px; border-radius:2px;
+    background:rgba(255,255,255,.35); pointer-events:none; z-index:20; transition:top .2s ease-out;
+  }
+  .now-indicator::before{
+    content:""; position:absolute; left:-4px; top:-3px; width:8px; height:8px; border-radius:50%;
+    background:rgba(255,255,255,.6); box-shadow:0 0 6px rgba(255,255,255,.25);
+  }
+  @media (prefers-color-scheme: light){
+    .now-indicator{background:rgba(0,0,0,.25)} .now-indicator::before{background:rgba(0,0,0,.45)}
+  }
+
+  /* ==== Focus Zone Loading Bar (new) ==== */
+  .zonebar{
+    position:relative; height:26px; margin:10px 12px 0; border:1px solid var(--border);
+    border-radius:999px; overflow:hidden;
+    background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+  }
+  .zb-seg{position:absolute; top:0; bottom:0; opacity:.22}
+  .zb-label{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:11px; color:var(--muted); white-space:nowrap; pointer-events:none;
+    text-shadow:0 1px 0 rgba(0,0,0,.35);
+  }
+  .zb-fill{position:absolute; inset:0 auto 0 0; width:0%;
+    background:linear-gradient(90deg, rgba(255,255,255,.10), rgba(255,255,255,.03));}
+  .zb-dot{
+    position:absolute; top:50%; transform:translate(-50%,-50%);
+    width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.9);
+    box-shadow:0 0 8px rgba(255,255,255,.45); left:0%;
+  }
+
+  /* area row (left) + all-day lane (right) */
+  .area-row{
+    display:flex; align-items:center; gap:8px; padding:10px 12px; border-top:1px solid var(--border);
+    overflow-x:auto;
+  }
+  .area-pill{
+    padding:6px 10px; border:1px solid rgba(255,255,255,.05); border-radius:999px;
+    background:linear-gradient(180deg, rgba(255,255,255,.015), rgba(0,0,0,.12));
+    color:var(--muted); font-size:12px; white-space:nowrap;
+    box-shadow:inset 0 0 2px rgba(0,0,0,.25);
+  }
+  .allday-lane{display:flex; gap:8px}
+  .allday-pill{
+    padding:6px 10px; border:1px solid var(--border); border-radius:999px;
+    background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+    color:var(--muted); font-size:12px; white-space:nowrap;
+  }
+
+  .agenda-list{display:flex; flex-direction:column}
+  .agenda-row{
+    display:grid; grid-template-columns:20px 1fr auto; gap:10px; align-items:center;
+    padding:10px 12px; border-top:1px solid var(--border);
+  }
+  .agenda-row:first-child{border-top:none}
+  .agenda-row .dot{width:10px; height:10px; border-radius:50%; border:2px solid var(--border)}
+  .dot.blue{background:rgba(110,168,254,.9)} .dot.green{background:rgba(125,242,201,.95)}
+  .dot.purple{background:#b38aff} .dot.gray{background:#9aa3b2}
+  .agenda-title{font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .agenda-meta{color:var(--muted); font-size:12px}
+  .agenda-row .chx{
+    width:18px;height:18px;border-radius:6px;border:1px solid var(--border);
+    display:inline-grid;place-items:center;cursor:pointer;background:transparent;
+  }
+  .agenda-row .chx .inner{width:10px;height:10px;border-radius:3px;background:transparent;opacity:0}
+  .agenda-row.done .chx .inner{background:var(--ok);opacity:1}
+  .agenda-row.done .agenda-title{color:var(--muted);text-decoration:line-through}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel" id="agendaPanel">
+      <div class="hd">
+        <button class="btn ghost mini" disabled>←</button>
+        <h2 id="dayTitle" style="margin:0 auto;">Saturday • Oct 11</h2>
+        <button class="btn ghost mini" disabled>→</button>
+      </div>
+      <div class="bd">
+        <div class="agenda-day" id="dayBox">
+          <!-- small header: left replaced by Focus string -->
+          <div class="agenda-day-hd" id="miniHd">
+            <div>Recovery Day</div>
+            <div class="date"></div>
+          </div>
+
+          <!-- Focus Zone loading bar -->
+          <div class="zonebar" id="zonebar">
+            <div class="zb-fill" id="zbFill"></div>
+            <div class="zb-dot" id="zbDot"></div>
+            <!-- segments + labels injected by JS -->
+          </div>
+
+          <!-- Area pill + all-day pills -->
+          <div class="area-row" id="areaRow">
+            <span class="area-pill" id="areaPill">Flex · 3:33 PM–7:30 PM</span>
+            <div class="allday-lane" id="alldayLane">
+              <!-- e.g., birthdays -->
+              <!-- <span class="allday-pill">Kris’ Birthday</span> -->
+            </div>
+          </div>
+
+          <!-- Timed events list -->
+          <div class="agenda-list" id="agendaList"></div>
+
+          <!-- live horizontal 'now' line -->
+          <div class="now-indicator" id="nowLine"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script>
+  /* ---------- Utilities ---------- */
+  const fmtTime = d => new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(d);
+  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  /* ---------- Mock data (matches your screenshots) ---------- */
+  const SELECTED = startOfDay(new Date()); // today
+  const at = (h,m=0)=> new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), h, m);
+
+  const FOCUS = "Recovery Day";
+  const ALLDAY = []; // e.g., ["Kris’ Birthday"]
+
+  const EVENTS = [
+    { title:"water plants",            start: at(7,30),                    color:"green" },
+    { title:"precor stretch circuit",  start: at(9,30),                    color:"blue"  },
+    { title:"grocery shop",            start: at(11,0), end: at(12,0),     color:"gray"  },
+    { title:"mom dinner",              start: at(19,30),                   color:"purple"},
+    { title:"sleep",                   start: at(23,15),                   color:"blue"  },
+  ];
+
+  /* Zone schedule for the loading bar (edit to taste) */
+  const ZONES = [
+    { label:"Flex",   start: at(12,47), end: at(19,30), color:'rgba(125,242,201,.45)' }, // example
+    // add more segments if you like:
+    // { label:"Review", start: at(9,0), end: at(12,30), color:'rgba(255,176,90,.45)' },
+  ];
+
+  /* ---------- Render Agenda rows ---------- */
+  const list = document.getElementById('agendaList');
+  EVENTS.sort((a,b)=>+a.start-+b.start).forEach(ev=>{
+    const row = document.createElement('div');
+    row.className = 'agenda-row';
+    row.dataset.start = ev.start.toISOString();
+    if (ev.end) row.dataset.end = ev.end.toISOString();
+
+    const startStr = fmtTime(ev.start);
+    const endStr = ev.end ? fmtTime(ev.end) : null;
+
+    row.innerHTML = `
+      <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
+      <div>
+        <div class="agenda-title">${ev.title}</div>
+        <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
+      </div>
+      <label class="chx" aria-label="Mark ${ev.title} done">
+        <span class="inner"></span>
+      </label>
+    `;
+
+    row.querySelector('.chx').addEventListener('click', ()=> row.classList.toggle('done'));
+    list.appendChild(row);
+  });
+
+  /* ---------- All-day pills ---------- */
+  const lane = document.getElementById('alldayLane');
+  ALLDAY.forEach(t=>{
+    const p = document.createElement('span');
+    p.className = 'allday-pill';
+    p.textContent = t;
+    lane.appendChild(p);
+  });
+
+  /* ---------- Focus pill / header ---------- */
+  document.querySelector('#miniHd > :first-child').textContent = FOCUS;
+  document.querySelector('#miniHd .date').textContent = ""; // keep right empty like your card
+  document.getElementById('dayTitle').textContent =
+    new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(SELECTED) +
+    " • " +
+    new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(SELECTED);
+
+  /* ---------- Focus Zone Loading Bar ---------- */
+  const zonebar = document.getElementById('zonebar');
+  const fillEl  = document.getElementById('zbFill');
+  const dotEl   = document.getElementById('zbDot');
+
+  const DAY_START = new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), 0,0,0);
+  const DAY_END   = new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), 24,0,0);
+  const totalMs   = DAY_END - DAY_START;
+
+  // draw segments + labels
+  ZONES.forEach(z=>{
+    const left  = ((z.start - DAY_START)/totalMs) * 100;
+    const width = ((z.end   - z.start)/totalMs) * 100;
+    const seg   = document.createElement('div');
+    seg.className = 'zb-seg'; seg.style.left = left+'%'; seg.style.width = width+'%';
+    seg.style.background = z.color || 'rgba(110,168,254,.35)';
+    const lab = document.createElement('div');
+    lab.className = 'zb-label'; lab.textContent = z.label;
+    if (width < 8) lab.style.display = 'none';
+    seg.appendChild(lab);
+    zonebar.appendChild(seg);
+  });
+
+  function updateZoneBar(now=new Date()){
+    const pct = Math.max(0, Math.min(1, (now - DAY_START)/totalMs)) * 100;
+    fillEl.style.width = pct + '%';
+    dotEl.style.left = pct + '%';
+  }
+
+  /* ---------- Live horizontal now line ---------- */
+  const nowLine = document.getElementById('nowLine');
+  function updateNowLine(){
+    const listEl = document.getElementById('agendaList');
+    const rows = Array.from(listEl.querySelectorAll('.agenda-row'));
+    const now = new Date();
+
+    const points = rows.map(r=>{
+      const s = new Date(r.dataset.start);
+      const e = r.dataset.end ? new Date(r.dataset.end) : null;
+      const rect = r.getBoundingClientRect();
+      const listTop = listEl.getBoundingClientRect().top + window.scrollY;
+      return { s, e, yTop:rect.top + window.scrollY - listTop, yBot:rect.bottom + window.scrollY - listTop };
+    });
+
+    let top;
+    if (!points.length){ top = 10; }
+    else{
+      let prev=null,next=null;
+      for (const p of points){ if (now < p.s){ next=p; break } prev=p; }
+      if (!prev){                                   // before first
+        const first = points[0];
+        const span  = (first.s - SELECTED)/60000 || 1;
+        const prog  = Math.max(0, Math.min(1, (now - SELECTED)/ (first.s-SELECTED)));
+        top = first.yTop * prog;
+      }else if (!next){                             // after last
+        const last = points[points.length-1];
+        const end  = last.e || last.s;
+        const tail = (24*60) - ((end.getHours()*60)+end.getMinutes());
+        const prog = Math.max(0, Math.min(1, (now - end)/(tail*60000)));
+        top = last.yBot + (listEl.scrollHeight - last.yBot) * prog;
+      }else{                                        // between two
+        const t0 = prev.e || prev.s, t1 = next.s;
+        const y0 = prev.yBot, y1 = next.yTop;
+        const prog = Math.max(0, Math.min(1, (now - t0)/(t1 - t0)));
+        top = y0 + (y1 - y0) * prog;
+      }
+    }
+    const dayTop = document.getElementById('dayBox').getBoundingClientRect().top + window.scrollY;
+    const listTop = listEl.getBoundingClientRect().top + window.scrollY;
+    nowLine.style.top = (listTop - dayTop + top) + 'px';
+  }
+
+  /* ---------- Boot + gentle timers ---------- */
+  function tick(){
+    updateZoneBar(new Date());
+    updateNowLine();
+  }
+  tick();
+  setInterval(tick, 60000);
+  window.addEventListener('resize', tick);
+  window.addEventListener('scroll', updateNowLine, {passive:true});
+
+  /* Optional: set the Area pill text to match your mock “Flex · 3:33 PM–7:30 PM” */
+  (function seedAreaPill(){
+    const p = document.getElementById('areaPill');
+    const seg = ZONES[0];
+    if (seg) p.textContent = `${seg.label} · ${fmtTime(seg.start)}–${fmtTime(seg.end)}`;
+  })();
+</script>
+</body>
+</html>

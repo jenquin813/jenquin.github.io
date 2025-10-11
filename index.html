@@ -663,8 +663,8 @@
 
     // Format the Area pill
     function areaPillHTML(label, s, e){
-      const time = e ? `${fmtTime(s)}–${fmtTime(e)}` : fmtTime(s);
-      return `<span class="area-pill">${escapeHtml(label)} · ${time}</span>`;
+      // only show the area label, no time
+      return `<span class="area-pill">${escapeHtml(label)}</span>`;
     }
 
     // Create the combined row: [Area pill]  [all-day lane -> pills...]
