@@ -694,10 +694,9 @@
       const timeFmt = new Intl.DateTimeFormat(undefined, {
         hour: '2-digit', minute: '2-digit', ...(SHOW_SECONDS ? { second: '2-digit' } : {})
       });
-      const dayFmt  = new Intl.DateTimeFormat(undefined, { weekday: 'long' });
 
       box.querySelector('.clk-time').textContent = timeFmt.format(now);
-      box.querySelector('.clk-sub').textContent  = dayFmt.format(now);
+      box.querySelector('.clk-sub').textContent = '';
     }
 
     function startClock(){
@@ -782,7 +781,7 @@
       const rangeHint = $('#rangeHint');
       const tzHint = $('#tzHint');
       
-      if (nowHint) nowHint.textContent = fmtDate(now) + " · " + fmtTime(now);
+      if (nowHint) nowHint.textContent = fmtDate(now);
       if (rangeHint) rangeHint.textContent = `${fmtDate(SELECTED)} → ${fmtDate(addDays(SELECTED,6))}`;
       if (tzHint) tzHint.textContent = `Local time: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
       
