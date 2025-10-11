@@ -260,6 +260,57 @@
       white-space:nowrap;
     }
 
+    /* Row directly under the focus banner: Area (left) + All-day items (right) */
+    .area-row{
+      display:flex; align-items:center; gap:8px;
+      padding:10px 12px;
+      border-top:1px solid var(--border);
+      overflow-x:auto; /* if lots of all-day pills */
+    }
+    .area-row::-webkit-scrollbar{ height:6px; }
+    .area-row::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.1);
+      border-radius:999px;
+    }
+
+    /* Left pill = current Area (soft, blended) */
+    .area-pill{
+      display:inline-flex; align-items:center;
+      padding:6px 10px;
+      border:1px solid rgba(255,255,255,.05);
+      border-radius:999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.015), rgba(0,0,0,.12));
+      color: var(--muted);
+      font-size:12px;
+      box-shadow: inset 0 0 2px rgba(0,0,0,.25);
+      white-space:nowrap;
+    }
+
+    /* Right lane container for all-day items */
+    .allday-lane{
+      display:flex; gap:8px;
+      margin-left:6px;
+    }
+
+    /* Reuse your subtle all-day pill look */
+    .allday-pill{
+      display:inline-flex; align-items:center;
+      padding:6px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+      color: var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+    }
+
+    @media (prefers-color-scheme: light){
+      .area-pill{
+        border:1px solid rgba(0,0,0,.05);
+        background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(0,0,0,.02));
+      }
+    }
+
     footer{
       margin-top: 24px; color: var(--muted); font-size:12px; text-align:center;
     }
@@ -519,6 +570,148 @@
     const TODAY = startOfDay(new Date());
     let SELECTED = TODAY; // ← the day your FlowOS panel shows
 
+    // --- AREA detection (minimal; explicit ev.area preferred, else infer by title)
+    const AREA_FLEX = "Flex";
+    const AREA_NAMES = [
+      "Prep & Maintenance",
+      "Review & Planning",
+      "Rest & Recharge",
+      "Creative / Project Work",
+      "Health",
+      "Errands & Logistics",
+      "Social & Relationships",
+      "Flex"
+    ];
+
+    function inferAreaFromTitle(title=""){
+      const t = title.toLowerCase();
+      if (t.match(/\breview\b|\bplanning\b/)) return "Review & Planning";
+      if (t.match(/\brest\b|\brecharge\b/)) return "Rest & Recharge";
+      if (t.match(/\bprep\b|\bmaintenance\b/)) return "Prep & Maintenance";
+      if (t.match(/\bcreative\b|\bproject\b/)) return "Creative / Project Work";
+      if (t.match(/\bhealth\b|\bgym\b|\brun\b|\byoga\b/)) return "Health";
+      if (t.match(/\berrand\b|\blogistic\b|\bshop\b|\bgrocery\b/)) return "Errands & Logistics";
+      if (t.match(/\bsocial\b|\brelationship\b|\bfriend\b|\bdinner\b|\bmeet\b/)) return "Social & Relationships";
+      if (t.match(/\bflex\b/)) return "Flex";
+      return null;
+    }
+
+    // Build sorted "area windows" from events that map to an area
+    function areaWindows(events=[]){
+      return (events||[])
+        .map(ev=>{
+          const area = ev.area || inferAreaFromTitle(ev.title);
+          return (area && ev.start) ? { ...ev, area } : null;
+        })
+        .filter(Boolean)
+        .sort((a,b)=> +new Date(a.start) - +new Date(b.start));
+    }
+
+    // Single active area (if overlaps, prefer the one with latest start)
+    function findCurrentArea(events, now=new Date()){
+      const wins = areaWindows(events);
+      const active = wins.filter(w=>{
+        const s = new Date(w.start);
+        const e = w.end ? new Date(w.end) : null;
+        return e ? (now >= s && now < e) : (now >= s);
+      });
+      if (!active.length) return null;
+      return active.reduce((a,b)=> new Date(a.start) > new Date(b.start) ? a : b);
+    }
+
+    // Next scheduled area after now
+    function findNextArea(events, now=new Date()){
+      const wins = areaWindows(events);
+      for (const w of wins){ if (new Date(w.start) > now) return w; }
+      return null;
+    }
+
+    // Format the Area pill
+    function areaPillHTML(label, s, e){
+      const time = e ? `${fmtTime(s)}–${fmtTime(e)}` : fmtTime(s);
+      return `<span class="area-pill">${escapeHtml(label)} · ${time}</span>`;
+    }
+
+    // Create the combined row: [Area pill]  [all-day lane -> pills...]
+    function renderAreaRow(day, box){
+      const row = document.createElement('div');
+      row.className = 'area-row';
+      row.setAttribute('data-arearow','1');
+
+      // left: area pill placeholder
+      const areaSlot = document.createElement('span');
+      areaSlot.className = 'area-pill';
+      areaSlot.setAttribute('data-areaslot','1');
+      areaSlot.textContent = ''; // will be filled by updateAreaRow()
+
+      // right: all-day lane container
+      const lane = document.createElement('div');
+      lane.className = 'allday-lane';
+      lane.setAttribute('data-alldaylane','1');
+
+      // fill all-day items horizontally to the right
+      if (day.allDay && day.allDay.length){
+        day.allDay.forEach(a=>{
+          const pill = document.createElement('span');
+          pill.className = 'allday-pill';
+          pill.textContent = a.title;
+          lane.appendChild(pill);
+        });
+      }
+
+      row.appendChild(areaSlot);
+      row.appendChild(lane);
+      box.appendChild(row);
+
+      // initial area fill
+      updateAreaRow(day, row);
+    }
+
+    // Update only the left area pill content
+    function updateAreaRow(day, row){
+      if (!row) return;
+      const slot = row.querySelector('[data-areaslot="1"]');
+      if (!slot) return;
+
+      const now = new Date();
+      const isToday = +startOfDay(now) === +startOfDay(day.date);
+
+      if (!isToday){
+        // On non-today days: show first area if any, else a default Flex window (optional)
+        const wins = areaWindows(day.events);
+        if (wins.length){
+          const first = wins[0];
+          slot.outerHTML = areaPillHTML(first.area, new Date(first.start), first.end ? new Date(first.end) : null);
+        }else{
+          const ds = new Date(day.date); ds.setHours(9,0,0,0);
+          const de = new Date(day.date); de.setHours(17,0,0,0);
+          slot.outerHTML = areaPillHTML(AREA_FLEX, ds, de);
+        }
+        return;
+      }
+
+      // Today: only show the current area; if in a gap, show Flex until next area or EOD
+      const current = findCurrentArea(day.events, now);
+      if (current){
+        slot.outerHTML = areaPillHTML(current.area, new Date(current.start), current.end ? new Date(current.end) : null);
+      }else{
+        const next = findNextArea(day.events, now);
+        const flexStart = now;
+        const flexEnd = next ? new Date(next.start)
+          : new Date(day.date.getFullYear(), day.date.getMonth(), day.date.getDate(), 23, 59, 0, 0);
+        slot.outerHTML = areaPillHTML(AREA_FLEX, flexStart, flexEnd);
+      }
+    }
+
+    // Called by your timer to keep the area pill live
+    function updateLiveArea(){
+      const dayBox = document.querySelector('#agenda .agenda-day');
+      if (!dayBox || !window.__CURRENT_DAY) return;
+      const row = dayBox.querySelector('[data-arearow="1"]');
+      if (!row) return;
+      updateAreaRow(window.__CURRENT_DAY, row);
+    }
+
     // ------------ Demo mode via URL parameter
     // Visit site normally for live mode, add ?demo=1 for demo mode
     let DEMO = new URLSearchParams(window.location.search).has('demo');
@@ -751,18 +944,8 @@
           if (right) right.textContent = "";
         }
 
-        // ---- All-day lane (true all-day events)
-        if (day.allDay && day.allDay.length){
-          const ad = document.createElement('div');
-          ad.className = 'agenda-allday allday-row';
-          day.allDay.forEach(a=>{
-            const pill = document.createElement('span');
-            pill.className = 'allday-pill';
-            pill.textContent = a.title;
-            ad.appendChild(pill);
-          });
-          box.appendChild(ad);
-        }
+        // Add the area row with all-day items
+        renderAreaRow(day, box);
 
         // ---- Timed events (sorted)
         const list = document.createElement('div');
@@ -888,15 +1071,16 @@
     // Kick the updater
     function startNowIndicator(){
       updateNowIndicator();
+      updateLiveArea();                  // ← add
       clearInterval(window.__nowTimer);
       // smooth enough and cheap
-      window.__nowTimer = setInterval(updateNowIndicator, 1000);
+      window.__nowTimer = setInterval(()=>{
+        updateNowIndicator();
+        updateLiveArea();                // ← add
+      }, 60000); // every minute is fine
       // also recalc after resizes
       window.addEventListener('resize', updateNowIndicator);
-      window.addEventListener('scroll', () => {
-        // only recompute when the agenda is on screen
-        updateNowIndicator();
-      }, { passive:true });
+      window.addEventListener('scroll', updateNowIndicator, { passive:true });
     }
 
     // ------------ Quick add
@@ -1094,6 +1278,7 @@
     
     async function loadAgenda(){
       const days = DEMO ? mockAgenda(SELECTED) : await apiGet('/agenda');
+      window.__CURRENT_DAY = days[0];  // keep a handle for live updates
       renderAgenda(days);
       updateDayTitle(SELECTED);
       startNowIndicator();   // <— add this
