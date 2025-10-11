@@ -210,6 +210,11 @@
     .subitem{ display:flex; align-items:center; gap:8px; font-size:13px; }
     .subitem .tick{ width:12px; height:12px; border-radius:3px; border:1px solid var(--border); background:rgba(0,0,0,.04); }
     .subitem.done .subtxt{ color:var(--muted); text-decoration:line-through; }
+    .subitem{ cursor:pointer; }
+    .subitem.done .tick{
+      background: var(--ok);
+      border-color: rgba(118,255,155,.7);
+    }
     
     .item .main{
       flex:1;
@@ -446,7 +451,8 @@
     // ------------ Demo mode via URL parameter
     // Visit site normally for live mode, add ?demo=1 for demo mode
     let DEMO = new URLSearchParams(window.location.search).has('demo');
-
+    let CRASH_STATE = null;
+    
     // ------------ Mock data
     function mockTop3(){
       return [
@@ -591,15 +597,15 @@
     function renderCrash(items){
       const wrap = $('#crashList');
       wrap.innerHTML = "";
-
-      items.forEach((it)=>{
+    
+      items.forEach((it, dayIdx)=>{
         const due = it.due ? fmtDate(new Date(it.due)) : "—";
-
-        // Row (day header)
+    
+        // Day row (header)
         const row = document.createElement('div');
         row.className = 'item';
         row.innerHTML = `
-          <label class="chx" aria-label="toggle done">
+          <label class="chx" aria-label="toggle day done">
             <span class="dot"></span>
           </label>
           <div class="main">
@@ -608,33 +614,43 @@
           </div>
           <button class="btn ghost chev" type="button" aria-expanded="false">▸</button>
         `;
-
-        // Subtask list (hidden by default)
+    
+        // Subtask list
         const sub = document.createElement('div');
         sub.className = 'sublist';
-        (it.subtasks || []).forEach(txt=>{
+    
+        (it.subtasks || []).forEach((st, subIdx)=>{
           const li = document.createElement('div');
-          li.className = 'subitem';
+          li.className = 'subitem' + (st.completed ? ' done' : '');
           li.innerHTML = `
             <span class="tick" aria-hidden="true"></span>
-            <span class="subtxt">${escapeHtml(txt)}</span>
+            <span class="subtxt">${escapeHtml(st.text || st)}</span>
           `;
+    
+          // Toggle a single subtask
+          li.addEventListener('click', ()=>{
+            const curr = CRASH_STATE[dayIdx].subtasks[subIdx];
+            curr.completed = !curr.completed;
+            li.classList.toggle('done', curr.completed);
+            localStorage.setItem('crash7', JSON.stringify(CRASH_STATE));
+          });
+    
           sub.appendChild(li);
         });
-
-        // Toggle subtasks open/closed
+    
+        // Chevron expand/collapse
         const toggleBtn = row.querySelector('.chev');
         toggleBtn.addEventListener('click', ()=>{
           const open = sub.classList.toggle('open');
           toggleBtn.textContent = open ? '▾' : '▸';
           toggleBtn.setAttribute('aria-expanded', String(open));
         });
-
-        // Mark day as done
+    
+        // Optional: mark whole day as done (visual only)
         row.querySelector('.chx').addEventListener('click', ()=>{
           row.classList.toggle('done');
         });
-
+    
         wrap.appendChild(row);
         wrap.appendChild(sub);
       });
@@ -730,8 +746,27 @@
       renderTop3(items);
     }
     async function loadCrash(){
-      const items = DEMO ? mockCrash() : await apiGet('/crash7');
-      renderCrash(items);
+      // try cache first
+      if (CRASH_STATE === null) {
+        const cached = localStorage.getItem('crash7');
+        if (cached) { try { CRASH_STATE = JSON.parse(cached); } catch {} }
+      }
+    
+      // fetch if no cache
+      if (!Array.isArray(CRASH_STATE) || CRASH_STATE.length === 0) {
+        CRASH_STATE = DEMO ? mockCrash() : await apiGet('/crash7');
+      }
+    
+      // normalize: turn string subtasks into {text, completed:false}
+      CRASH_STATE = CRASH_STATE.map(day=>{
+        const subs = (day.subtasks || []).map(s => {
+          return typeof s === 'string' ? { text: s, completed: false } : s;
+        });
+        return { ...day, subtasks: subs };
+      });
+    
+      localStorage.setItem('crash7', JSON.stringify(CRASH_STATE));
+      renderCrash(CRASH_STATE);
     }
     
     function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
