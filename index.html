@@ -187,6 +187,30 @@
       font-size:13px; letter-spacing:.2px;
     }
     .agenda-day-hd .date{ color: var(--muted) }
+    
+    /* Make the left item in the small day header look like a pill */
+    /* Softer, more blended focus pill — matches card background */
+    /* Softer, muted-gray focus pill */
+    .agenda-day-hd > :first-child{
+      display:inline-block;
+      padding:6px 10px;
+      border:1px solid rgba(255,255,255,.05);
+      border-radius:999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.015), rgba(0,0,0,.12));
+      font-weight:400;
+      font-size:12px;
+      letter-spacing:.2px;
+      color: var(--muted);         /* ← makes text match your time gray */
+      box-shadow: inset 0 0 2px rgba(0,0,0,.25);
+    }
+
+    @media (prefers-color-scheme: light){
+      .agenda-day-hd > :first-child{
+        border:1px solid rgba(0,0,0,.05);
+        background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(0,0,0,.02));
+        color: var(--muted);       /* still use muted tone in light mode */
+      }
+    }
     .agenda-list{ display:flex; flex-direction:column }
     .agenda-row{
       display:grid; grid-template-columns: 20px 1fr auto; align-items:center;
@@ -690,13 +714,24 @@
     days.forEach(day=>{
         const box = document.createElement('div');
         box.className = 'agenda-day';
-
+        
+                // existing header:
         const hd = document.createElement('div');
         hd.className = 'agenda-day-hd';
         const dow = new Intl.DateTimeFormat(undefined, { weekday:'long'}).format(day.date);
         const mdy = new Intl.DateTimeFormat(undefined, { month:'short', day:'numeric' }).format(day.date);
         hd.innerHTML = `<div>${escapeHtml(day.label)}</div><div class="date">${dow}, ${mdy}</div>`;
         box.appendChild(hd);
+
+        // ▼ Add this block to replace the header text with your focus
+        if (day.allDay && day.allDay.length) {
+          const focus = day.allDay[0].title || "";
+          // left cell becomes focus
+          hd.firstElementChild.textContent = focus;
+          // right cell cleared
+          const right = hd.querySelector('.date');
+          if (right) right.textContent = "";
+        }
 
         // All-day pills
         if(day.allDay && day.allDay.length){
