@@ -232,6 +232,29 @@
       font-size:11px; padding:4px 8px; border-radius:999px;
       border:1px solid var(--border); color: var(--muted);
     }
+
+    /* Agenda: done state matches .item.done */
+    .agenda-row.done .agenda-title{
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+    .agenda-row .chx-agenda{
+      width:18px; height:18px;
+      border-radius:6px;
+      border:1px solid var(--border);
+      display:inline-grid; place-items:center;
+      cursor:pointer;
+    }
+
+    /* Same green fill when checked */
+    .agenda-row.done .chx-agenda .dot{
+      width:10px; height:10px; border-radius:3px;
+      background: var(--ok);
+    }
+
+    /* Optional: nudge the right cell a hair */
+    .agenda-row > .chx-agenda{ margin-left: 8px; }
+
     /* All-day lane: single line, scrolls left→right */
     .agenda-allday{
       display:flex;
@@ -927,6 +950,20 @@
       });
     }
     
+    function getAgendaDone(){
+      try { return JSON.parse(localStorage.getItem('agendaDone')||'{}'); }
+      catch { return {}; }
+    }
+    function setAgendaDone(map){
+      localStorage.setItem('agendaDone', JSON.stringify(map||{}));
+    }
+    function agendaKey(ev){
+      // stable key per event instance
+      const s = new Date(ev.start).toISOString();
+      const e = ev.end ? new Date(ev.end).toISOString() : '';
+      return `${s}|${e}|${ev.title}`;
+    }
+    
     function renderAgenda(days){
       const wrap = document.getElementById('agenda');
       wrap.innerHTML = "";
@@ -974,8 +1011,23 @@
               <div class="agenda-title">${escapeHtml(ev.title)}</div>
               <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
             </div>
-            <span class="agenda-badge">${startStr}</span>
+            <label class="chx-agenda" aria-label="Mark ${escapeHtml(ev.title)} done">
+              <span class="dot"></span>
+            </label>
           `;
+
+          const key = agendaKey(ev);
+          const doneMap = getAgendaDone();
+          if (doneMap[key]) row.classList.add('done');
+
+          // toggle done on click (checkbox at right)
+          row.querySelector('.chx-agenda').addEventListener('click', ()=>{
+            row.classList.toggle('done');
+            const m = getAgendaDone();
+            m[key] = row.classList.contains('done');
+            setAgendaDone(m);
+          });
+
           list.appendChild(row);
         });
         box.appendChild(list);
