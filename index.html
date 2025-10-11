@@ -232,12 +232,31 @@
       font-size:11px; padding:4px 8px; border-radius:999px;
       border:1px solid var(--border); color: var(--muted);
     }
+    /* All-day lane: single line, scrolls left→right */
     .agenda-allday{
-      display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--border); flex-wrap:wrap;
+      display:flex;
+      gap:8px;
+      padding:10px 12px;
+      border-top:1px solid var(--border);
+      overflow-x:auto;
+      white-space:nowrap;
+      scrollbar-width: thin;
     }
+    .agenda-allday::-webkit-scrollbar{ height:6px; }
+    .agenda-allday::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.1);
+      border-radius: 999px;
+    }
+
+    /* Subtle all-day pills */
     .allday-pill{
-      font-size:12px; padding:6px 10px; border-radius:999px;
-      border:1px solid var(--border); background: rgba(255,255,255,.02);
+      display:inline-flex; align-items:center;
+      padding:6px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+      color: var(--muted);
+      font-size:12px;
       white-space:nowrap;
     }
 
@@ -709,13 +728,14 @@
     }
     
     function renderAgenda(days){
-    const wrap = document.getElementById('agenda');
-    wrap.innerHTML = "";
-    days.forEach(day=>{
+      const wrap = document.getElementById('agenda');
+      wrap.innerHTML = "";
+
+      days.forEach(day=>{
         const box = document.createElement('div');
         box.className = 'agenda-day';
-        
-                // existing header:
+
+        // ---- Header (Focus banner)
         const hd = document.createElement('div');
         hd.className = 'agenda-day-hd';
         const dow = new Intl.DateTimeFormat(undefined, { weekday:'long'}).format(day.date);
@@ -723,56 +743,54 @@
         hd.innerHTML = `<div>${escapeHtml(day.label)}</div><div class="date">${dow}, ${mdy}</div>`;
         box.appendChild(hd);
 
-        // ▼ Add this block to replace the header text with your focus
-        if (day.allDay && day.allDay.length) {
-          const focus = day.allDay[0].title || "";
-          // left cell becomes focus
+        // Replace left header text with focus (if present)
+        const focus = day.focus || (day.allDay?.[0]?.title || "");
+        if (focus){
           hd.firstElementChild.textContent = focus;
-          // right cell cleared
           const right = hd.querySelector('.date');
           if (right) right.textContent = "";
         }
 
-        // All-day pills
-        if(day.allDay && day.allDay.length){
-        const ad = document.createElement('div');
-        ad.className = 'agenda-allday';
-        day.allDay.forEach(a=>{
+        // ---- All-day lane (true all-day events)
+        if (day.allDay && day.allDay.length){
+          const ad = document.createElement('div');
+          ad.className = 'agenda-allday allday-row';
+          day.allDay.forEach(a=>{
             const pill = document.createElement('span');
             pill.className = 'allday-pill';
             pill.textContent = a.title;
             ad.appendChild(pill);
-        });
-        box.appendChild(ad);
+          });
+          box.appendChild(ad);
         }
 
-        // Timed events (sorted)
+        // ---- Timed events (sorted)
         const list = document.createElement('div');
         list.className = 'agenda-list';
         (day.events||[]).sort((a,b)=> +new Date(a.start) - +new Date(b.start));
         (day.events||[]).forEach(ev=>{
-        const startStr = fmtTime(new Date(ev.start));       // <-- exact time (e.g., 7:30 AM)
-        const endStr   = ev.end ? fmtTime(new Date(ev.end)) : null;
+          const startStr = fmtTime(new Date(ev.start));
+          const endStr   = ev.end ? fmtTime(new Date(ev.end)) : null;
 
-        const row = document.createElement('div');
-        row.className = 'agenda-row';
-        row.dataset.start = new Date(ev.start).toISOString();
-        if (ev.end) row.dataset.end = new Date(ev.end).toISOString();
-
-        row.innerHTML = `
+          const row = document.createElement('div');
+          row.className = 'agenda-row';
+          row.dataset.start = new Date(ev.start).toISOString();
+          if (ev.end) row.dataset.end = new Date(ev.end).toISOString();
+          
+          row.innerHTML = `
             <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
             <div>
-            <div class="agenda-title">${escapeHtml(ev.title)}</div>
-            <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
+              <div class="agenda-title">${escapeHtml(ev.title)}</div>
+              <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
             </div>
-            <span class="agenda-badge">${startStr}</span>  <!-- matches left -->
-        `;
-        list.appendChild(row);
+            <span class="agenda-badge">${startStr}</span>
+          `;
+          list.appendChild(row);
         });
         box.appendChild(list);
 
         wrap.appendChild(box);
-    });
+      });
     }
 
     function ensureNowIndicator(dayBox){
