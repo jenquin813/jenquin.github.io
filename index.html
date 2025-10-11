@@ -752,8 +752,70 @@
 
     // ------------ Demo mode via URL parameter
     // Visit site normally for live mode, add ?demo=1 for demo mode
-    let DEMO = new URLSearchParams(window.location.search).has('demo');
+    // Check if demo mode is active via URL parameter
+    const isDemoMode = new URLSearchParams(window.location.search).has('demo');
+    // Store previous demo state to detect changes
+    let previousDemoState = localStorage.getItem('_demoState') === 'true';
+    // Set current demo state
+    let DEMO = isDemoMode;
     let CRASH_STATE = null;
+    
+    // If demo mode has changed, reset the demo storage
+    if (DEMO !== previousDemoState) {
+      if (DEMO) {
+        // Switching to demo mode - reset all demo storage
+        resetDemoStorage();
+        console.log('Demo mode activated - storage reset');
+      }
+      // Store the current demo state
+      localStorage.setItem('_demoState', DEMO.toString());
+    }
+    
+    // ------------ Storage wrappers for demo vs live persistence
+    // These wrappers provide a consistent interface for storage operations
+    // In demo mode, they use memory storage that resets on page refresh
+    // In live mode, they use localStorage for persistence
+    
+    // In-memory storage for demo mode
+    const DEMO_STORAGE = {};
+    
+    // Get a value from storage (localStorage in live mode, memory in demo mode)
+    function storageGet(key) {
+      if (DEMO) {
+        return DEMO_STORAGE[key];
+      } else {
+        try {
+          return JSON.parse(localStorage.getItem(key) || 'null');
+        } catch {
+          return null;
+        }
+      }
+    }
+    
+    // Set a value in storage (localStorage in live mode, memory in demo mode)
+    function storageSet(key, value) {
+      if (DEMO) {
+        DEMO_STORAGE[key] = value;
+      } else {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    }
+    
+    // Remove a value from storage
+    function storageRemove(key) {
+      if (DEMO) {
+        delete DEMO_STORAGE[key];
+      } else {
+        localStorage.removeItem(key);
+      }
+    }
+    
+    // Reset all demo storage (used when toggling demo mode)
+    function resetDemoStorage() {
+      Object.keys(DEMO_STORAGE).forEach(key => {
+        delete DEMO_STORAGE[key];
+      });
+    }
     
     // ------------ Mock data
     function mockTop3(){
@@ -963,17 +1025,18 @@
     }
     
     function getAgendaDone(){
-      try { return JSON.parse(localStorage.getItem('agendaDone')||'{}'); }
-      catch { return {}; }
+      return storageGet('agendaDone') || {};
     }
     function setAgendaDone(map){
-      localStorage.setItem('agendaDone', JSON.stringify(map||{}));
+      storageSet('agendaDone', map || {});
     }
     function agendaKey(ev){
       // stable key per event instance
       const s = new Date(ev.start).toISOString();
       const e = ev.end ? new Date(ev.end).toISOString() : '';
-      return `${s}|${e}|${ev.title}`;
+      // Include the day in the key to scope it to the day
+      const day = startOfDay(new Date(ev.start)).toISOString().split('T')[0];
+      return `${day}|${s}|${e}|${ev.title}`;
     }
     
     function renderAgenda(days){
@@ -1194,8 +1257,7 @@
     async function loadCrash(){
       // try cache first
       if (CRASH_STATE === null) {
-        const cached = localStorage.getItem('crash7');
-        if (cached) { try { CRASH_STATE = JSON.parse(cached); } catch {} }
+        CRASH_STATE = storageGet('crash7');
       }
     
       // fetch if no cache
@@ -1211,7 +1273,7 @@
         return { ...day, subtasks: subs };
       });
     
-      localStorage.setItem('crash7', JSON.stringify(CRASH_STATE));
+      storageSet('crash7', CRASH_STATE);
       renderCrash(CRASH_STATE);
     }
     
@@ -1376,6 +1438,20 @@
     document.addEventListener('DOMContentLoaded', () => {
       const yearEl = $('#year');
       if (yearEl) yearEl.textContent = new Date().getFullYear();
+      
+      // Add demo mode indicator if in demo mode
+      if (DEMO) {
+        const footer = document.querySelector('footer');
+        if (footer) {
+          const demoIndicator = document.createElement('div');
+          demoIndicator.className = 'demo-indicator';
+          demoIndicator.textContent = 'DEMO MODE';
+          demoIndicator.style.color = '#ff5722';
+          demoIndicator.style.fontWeight = 'bold';
+          demoIndicator.style.marginTop = '8px';
+          footer.appendChild(demoIndicator);
+        }
+      }
     });
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
 
