@@ -227,6 +227,16 @@
       color:var(--accent);
       transform: translateY(-1px);
     }
+    
+    .item .main{ flex:1; }
+    .item .kebab{
+      margin-left:auto;
+      border:none;
+      background:transparent;
+      color:var(--muted);
+      padding:6px 10px;
+    }
+    .item .kebab:hover{ color:var(--accent); transform: translateY(-1px); }
   </style>
 </head>
 <body>
@@ -444,7 +454,9 @@
 
     // ------------ Renderers
     function renderTop3(items){
-      const wrap = $('#top3List'); wrap.innerHTML = "";
+      const wrap = $('#top3List'); 
+      wrap.innerHTML = "";
+
       items.forEach((it, idx)=>{
         const row = document.createElement('div');
         row.className = 'item' + (it.completed ? ' done' : '');
@@ -452,22 +464,17 @@
           <label class="chx" aria-label="toggle done">
             <span class="dot"></span>
           </label>
-          <div>
+          <div class="main">
             <div class="title">${escapeHtml(it.title)}</div>
             <div class="meta">${it.tag ? escapeHtml(it.tag) : ''}</div>
           </div>
-          <div class="row">
-            <span class="tag">Top 3</span>
-            <button class="btn ghost kebab" data-action="remove" title="Remove">⋯</button>
-          </div>
         `;
-        row.querySelector('.chx').addEventListener('click', async ()=>{
+
+        // toggle complete
+        row.querySelector('.chx').addEventListener('click', ()=>{
           row.classList.toggle('done');
         });
-        row.querySelector('[data-action="remove"]').addEventListener('click', async ()=>{
-          row.style.opacity = .5;
-          setTimeout(()=> row.remove(), 180);
-        });
+
         wrap.appendChild(row);
       });
     }
