@@ -151,6 +151,34 @@
       border-radius: var(--radius);
       background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
       margin-bottom: 12px; overflow: hidden;
+      position: relative;
+    }
+
+    /* Live 'now' line inside a day box */
+    .now-indicator {
+      position: absolute;
+      left: 12px;           /* aligns with agenda padding */
+      right: 12px;
+      height: 2px;
+      background: rgba(255,255,255,.35);   /* subtle gray on dark */
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 20;
+      transition: top .2s ease-out;        /* smooth nudges */
+    }
+
+    /* optional tiny dot on the left edge */
+    .now-indicator::before{
+      content:"";
+      position:absolute;
+      left:-4px; top:-3px;
+      width:8px; height:8px; border-radius:50%;
+      background: rgba(255,255,255,.6);
+      box-shadow: 0 0 6px rgba(255,255,255,.25);
+    }
+    @media (prefers-color-scheme: light){
+      .now-indicator{ background: rgba(0,0,0,.25); }
+      .now-indicator::before{ background: rgba(0,0,0,.45); }
     }
     .agenda-day-hd{
       display:flex; justify-content:space-between; align-items:center;
@@ -693,6 +721,9 @@
 
         const row = document.createElement('div');
         row.className = 'agenda-row';
+        row.dataset.start = new Date(ev.start).toISOString();
+        if (ev.end) row.dataset.end = new Date(ev.end).toISOString();
+
         row.innerHTML = `
             <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
             <div>
@@ -707,6 +738,112 @@
 
         wrap.appendChild(box);
     });
+    }
+
+    function ensureNowIndicator(dayBox){
+      let el = dayBox.querySelector('.now-indicator');
+      if (!el){
+        el = document.createElement('div');
+        el.className = 'now-indicator';
+        dayBox.appendChild(el);
+      }
+      return el;
+    }
+
+    /**
+     * Places the 'now' line inside the first .agenda-day box based on time.
+     * It interpolates between the DOM positions of the nearest events so it
+     * glides smoothly even between rows of different heights.
+     */
+    function updateNowIndicator(){
+      // Only show on the selected day if it is today
+      const isToday = +startOfDay(new Date()) === +startOfDay(SELECTED);
+      const dayBox = document.querySelector('#agenda .agenda-day');
+      if (!dayBox){ return; }
+
+      // Remove if not today
+      if (!isToday){
+        const old = dayBox.querySelector('.now-indicator');
+        if (old) old.remove();
+        return;
+      }
+
+      const list = dayBox.querySelector('.agenda-list');
+      if (!list){ return; }
+
+      const rows = Array.from(list.querySelectorAll('.agenda-row'));
+      const now = new Date();
+
+      // Build time → y map from rows
+      const points = rows.map(row => {
+        const start = new Date(row.dataset.start);
+        const end = row.dataset.end ? new Date(row.dataset.end) : null;
+        const rect = row.getBoundingClientRect();
+        const listTop = list.getBoundingClientRect().top + window.scrollY;
+        return {
+          start, end,
+          yTop:  rect.top + window.scrollY - listTop,
+          yBot:  rect.bottom + window.scrollY - listTop
+        };
+      });
+
+      const indicator = ensureNowIndicator(dayBox);
+      const listBoxTop = list.getBoundingClientRect().top + window.scrollY;
+
+      // If no events, pin to the very top at current time
+      if (points.length === 0){
+        indicator.style.top = (listBoxTop + 8 - listBoxTop) + 'px';
+        return;
+      }
+
+      // Find surrounding interval
+      let prev = null, next = null;
+      for (let i=0;i<points.length;i++){
+        const p = points[i];
+        const start = p.start;
+        if (now < start){ next = p; break; }
+        prev = p;
+      }
+
+      let topPx;
+
+      if (!prev){                 // before first event
+        const first = points[0];
+        const dayStart = new Date(SELECTED); // 00:00 today
+        const minutesSpan = (first.start - dayStart) / 60000;
+        const prog = Math.min(Math.max((now - dayStart) / (first.start - dayStart), 0), 1);
+        topPx = first.yTop * prog;
+      } else if (!next){          // after last event
+        const last = points[points.length - 1];
+        const dayEnd = new Date(SELECTED); dayEnd.setHours(23,59,59,999);
+        const prog = Math.min(Math.max((now - (last.end || last.start)) / (dayEnd - (last.end || last.start)), 0), 1);
+        topPx = last.yBot + (list.scrollHeight - last.yBot) * prog;
+      } else {                    // between prev and next
+        const t0 = prev.end || prev.start;            // use end if present
+        const t1 = next.start;
+        const y0 = prev.yBot;
+        const y1 = next.yTop;
+        const prog = Math.min(Math.max((now - t0) / (t1 - t0), 0), 1);
+        topPx = y0 + (y1 - y0) * prog;
+      }
+
+      // Apply position (relative to the agenda-day box)
+      const dayTop = dayBox.getBoundingClientRect().top + window.scrollY;
+      indicator.style.top = (listBoxTop - dayTop + topPx) + 'px';
+    }
+
+    // Kick the updater
+    function startNowIndicator(){
+      updateNowIndicator();
+      clearInterval(window.__nowTimer);
+      // smooth enough and cheap
+      window.__nowTimer = setInterval(updateNowIndicator, 1000);
+      // also recalc after resizes
+      window.addEventListener('resize', updateNowIndicator);
+      window.addEventListener('scroll', () => {
+        // only recompute when the agenda is on screen
+        updateNowIndicator();
+      }, { passive:true });
     }
 
     // ------------ Quick add
@@ -906,6 +1043,7 @@
       const days = DEMO ? mockAgenda(SELECTED) : await apiGet('/agenda');
       renderAgenda(days);
       updateDayTitle(SELECTED);
+      startNowIndicator();   // <— add this
     }
     
     async function loadAll(){
@@ -921,6 +1059,7 @@
       await Promise.all([loadTop3(), loadCrash(), loadAgenda()]);
       renderMiniMonth(SELECTED);
       startClock();
+      startNowIndicator();   // <— add this
     }
 
     // ------------ Misc
