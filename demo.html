@@ -44,10 +44,26 @@
   <div class="loader"></div>
   <p>You will be automatically redirected to the jenquin.io dashboard in demo mode...</p>
   <script>
-    // Redirect to the main page with demo parameter
-    setTimeout(function() {
-      window.location.href = './index.html?demo=1';
-    }, 1500); // Short delay for the loading animation
+    // Ensure we're always in demo mode
+    function redirectToDemo() {
+      // Get the current URL
+      var currentUrl = window.location.href;
+      var baseUrl = './index.html';
+      
+      // Check if we're already on index.html
+      if (currentUrl.includes('index.html')) {
+        baseUrl = currentUrl.split('?')[0]; // Get the URL without parameters
+      }
+      
+      // Add or update the demo parameter
+      var targetUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'demo=1';
+      
+      // Redirect to the demo URL
+      window.location.href = targetUrl;
+    }
+    
+    // Redirect after a short delay for the loading animation
+    setTimeout(redirectToDemo, 1500);
   </script>
 </body>
 </html>
