@@ -348,7 +348,6 @@
       </div>
       <div class="actions">
         <button class="btn" id="openReminders">Open Reminders</button>
-        <button class="btn primary" id="quickAddTop">+ Quick Add</button>
       </div>
     </header>
 
@@ -719,14 +718,9 @@
     // ------------ Actions (simulate opening native apps)
     document.addEventListener('DOMContentLoaded', () => {
       const openReminders = $('#openReminders');
-      const quickAddTop = $('#quickAddTop');
       
       if (openReminders) {
         openReminders.addEventListener('click', () => alert('Opening Reminders (simulated)…'));
-      }
-      
-      if (quickAddTop) {
-        quickAddTop.addEventListener('click', () => $('.in[name="title"]').focus());
       }
     });
 

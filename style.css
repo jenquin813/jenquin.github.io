@@ -40,7 +40,7 @@ header{ display:flex; align-items:center; justify-content:space-between; gap: 16
 .logo{ width:44px; height:44px; border-radius:12px; box-shadow: var(--shadow); }
 .brand h1{ font-size: 20px; margin: 0; letter-spacing:.4px }
 .brand .sub{ color: var(--muted); font-size:13px; margin-top:2px }
-.actions{ display:flex; align-items:center; gap:10px }
+.actions{ display:flex; align-items:center; gap:8px }
 .btn{
   appearance:none; border:1px solid var(--border); color:var(--text);
   background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06));
