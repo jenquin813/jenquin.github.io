@@ -1,20 +1,21 @@
-# 🌀 Jenquin Site
-**Public-Facing Frontend Prototype for the Jenquin System**
+# Jenquin.io
 
-## 🌐 Overview
-**Jenquin Site** represents the *visible layer* of the Jenquin ecosystem — a simple, shareable frontend that demonstrates how people might interact with the system’s underlying logic and automation engine.
+Personal Ops Dashboard
 
-While the private backend focuses on data processing, scheduling logic, and adaptive task management, this site focuses on **clarity**, **flow**, and **accessibility** — giving others a tangible preview of what the Jenquin experience feels like in action.
+## Access URLs
 
-## 🧠 Purpose
-This frontend acts as both:
-- a **concept demo** for collaborators, helping them visualize the UI and flow of the system, and
-- a **foundation** for future interactive builds (web, app, or hybrid).
+- **Live Site**: https://jenquin813.github.io/jenquin.github.io/
+- **Demo Mode**: https://jenquin813.github.io/jenquin.github.io/?demo=1
 
-It’s intentionally lightweight — built with HTML, CSS, and minimal JavaScript — but structured in a way that can later connect to real data or APIs from the backend.
+## Features
 
-## 🧩 Relationship to Backend
-The Jenquin system is divided into two layers:
+- Top 3 Today task management
+- 7-Day Crash Plan
+- Daily Agenda view
+- Mini calendar with month navigation
+- Digital clock
+- Quick Add functionality
+- Demo mode (via URL parameter)
 
 | Layer | Description |
 |------|-------------|

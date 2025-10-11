@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Top 3 Form</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; }
+    .panel { border: 1px solid #ccc; border-radius: 8px; padding: 15px; max-width: 500px; }
+    .hd { margin-bottom: 10px; }
+    .bd { margin-bottom: 15px; }
+    .ft { border-top: 1px solid #eee; padding-top: 10px; }
+    .list { min-height: 50px; }
+    .item { display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .chx { margin-right: 10px; cursor: pointer; }
+    .dot { display: inline-block; width: 16px; height: 16px; border: 2px solid #999; border-radius: 50%; }
+    .done .dot { background-color: #999; }
+    .title { font-weight: 500; }
+    .meta { font-size: 0.8em; color: #666; }
+    .quick { display: flex; }
+    .in { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 8px; }
+    .btn { padding: 8px 16px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <section class="panel" id="top3Panel">
+    <div class="hd">
+      <h2>Top 3 Today</h2>
+      <div class="row">
+        <span class="badge" id="dayLabel">Today</span>
+        <span class="hint" id="nowHint">—</span>
+      </div>
+    </div>
+    <div class="bd">
+      <div class="list" id="top3List"></div>
+    </div>
+    <div class="ft">
+      <form class="quick" id="top3Form">
+        <input class="in" type="text" placeholder="Quick add to Top 3…" name="title" required />
+        <button class="btn" type="submit">Add</button>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    // Utilities
+    const $ = sel => document.querySelector(sel);
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Demo mode
+    let DEMO = true;
+    
+    // Mock data
+    function mockTop3() {
+      return [
+        { title: "cut front grass", due: "", completed: false},
+        { title: "pay electric", due: "", completed: false},
+        { title: "migrate webhook to tailscale", due: "", completed: false},
+      ];
+    }
+    
+    // Renderer
+    function renderTop3(items) {
+      const wrap = $('#top3List'); 
+      wrap.innerHTML = "";
+      
+      items.forEach((it, idx) => {
+        const row = document.createElement('div');
+        row.className = 'item' + (it.completed ? ' done' : '');
+        row.innerHTML = `
+          <label class="chx" aria-label="toggle done">
+            <span class="dot"></span>
+          </label>
+          <div class="main">
+            <div class="title">${escapeHtml(it.title)}</div>
+            <div class="meta">${it.tag ? escapeHtml(it.tag) : ''}</div>
+          </div>
+        `;
+        
+        // toggle complete
+        row.querySelector('.chx').addEventListener('click', () => {
+          row.classList.toggle('done');
+        });
+        
+        wrap.appendChild(row);
+      });
+    }
+    
+    // Initial load
+    function loadTop3() {
+      const items = mockTop3();
+      renderTop3(items);
+    }
+    
+    // Form handler
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("DOM loaded, setting up form handler");
+      const top3Form = $('#top3Form');
+      console.log("Form element:", top3Form);
+      
+      if (top3Form) {
+        top3Form.addEventListener('submit', (e) => {
+          console.log("Form submitted");
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const title = String(fd.get('title') || '').trim();
+          console.log("Title:", title);
+          
+          if (!title) return;
+          
+          const items = mockTop3();
+          items.unshift({title, due: "", completed: false, tag: "#QuickAdd"});
+          renderTop3(items);
+          e.target.reset();
+        });
+      }
+    });
+    
+    // Initialize
+    loadTop3();
+  </script>
+</body>
+</html>

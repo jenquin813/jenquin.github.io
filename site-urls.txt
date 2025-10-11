@@ -1,0 +1,4 @@
+Jenquin Site URLs:
+
+Live Site: https://jenquin813.github.io/jenquin.github.io/
+Demo Mode: https://jenquin813.github.io/jenquin.github.io/?demo=1

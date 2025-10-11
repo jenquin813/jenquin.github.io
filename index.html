@@ -424,6 +424,12 @@
     // ------------ Utilities
     const $ = sel => document.querySelector(sel);
     const $$ = sel => Array.from(document.querySelectorAll(sel));
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
     function fmtTime(d){
       return new Intl.DateTimeFormat(undefined, { hour:'numeric', minute:'2-digit' }).format(d);
@@ -558,7 +564,7 @@
 
     // ------------ Renderers
     function renderTop3(items){
-      const wrap = $('#top3List'); 
+      const wrap = $('#top3List');
       wrap.innerHTML = "";
 
       items.forEach((it, idx)=>{
