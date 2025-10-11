@@ -198,62 +198,6 @@
       font-size:11px; padding:3px 8px; border-radius:999px; background: rgba(110,168,254,.15); border:1px solid rgba(110,168,254,.35);
       color: #dbe9ff;
     }
-    
-    /* Crash subtasks (accordion) */
-    .chev{ font-size:14px; border:1px solid var(--border); border-radius:8px; padding:4px 8px; }
-    .sublist{
-      display:none; margin:8px 0 0 38px;
-      padding:8px 10px; border-left:2px solid var(--border);
-      display:none; gap:8px; flex-direction:column;
-    }
-    .sublist.open{ display:flex; }
-    .subitem{ display:flex; align-items:center; gap:8px; font-size:13px; }
-    .subitem .tick{ width:12px; height:12px; border-radius:3px; border:1px solid var(--border); background:rgba(0,0,0,.04); }
-    .subitem.done .subtxt{ color:var(--muted); text-decoration:line-through; }
-    
-    .item .main{
-      flex:1;
-    }
-    .item .chev{
-      margin-left:auto;
-      font-size:16px;
-      border:none;
-      background:transparent;
-      color:var(--muted);
-      cursor:pointer;
-      padding:6px 10px;
-    }
-    .item .chev:hover{
-      color:var(--accent);
-      transform: translateY(-1px);
-    }
-    
-    .item .main{ flex:1; }
-    .item .kebab{
-      margin-left:auto;
-      border:none;
-      background:transparent;
-      color:var(--muted);
-      padding:6px 10px;
-    }
-    .item .kebab:hover{ color:var(--accent); transform: translateY(-1px); }
-    
-    .btn.mini{ padding:6px 10px; border-radius:10px }
-    #miniMonth{
-      display:grid; gap:6px;
-      grid-template-columns: repeat(7, 1fr);
-      width:100%;
-    }
-    .mm-cell{
-      text-align:center; font-size:12px; padding:6px 0;
-      border:1px solid var(--border); border-radius:8px;
-      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.04));
-      cursor:pointer; user-select:none;
-    }
-    .mm-head{ font-weight:600; color:var(--muted); cursor:default; }
-    .mm-out{ opacity:.45 }
-    .mm-today{ outline:2px solid var(--accent); }
-    .mm-sel{ background: rgba(110,168,254,.18); border-color: rgba(110,168,254,.45); }
   </style>
 </head>
 <body>
@@ -291,11 +235,11 @@
             <form class="quick" id="top3Form">
               <input class="in" type="text" placeholder="Quick add to Top 3…" name="title" required />
               <button class="btn" type="submit">Add</button>
+              <button class="btn ghost" type="button" id="revealTop3">Reveal in Reminders</button>
             </form>
           </div>
         </section>
 
-        <!-- Crash Plan (no footer) -->
         <section class="panel" id="crashPanel" style="margin-top:18px;">
           <div class="hd">
             <h2>7-Day Crash Plan</h2>
@@ -304,21 +248,23 @@
           <div class="bd">
             <div class="list" id="crashList"></div>
           </div>
+          <div class="ft">
+            <button class="btn ghost" id="revealCrash">Reveal Crash Plan</button>
+          </div>
         </section>
       </div>
 
       <!-- Right column: Agenda (Apple-style) -->
       <section class="panel" id="agendaPanel">
-        <div class="hd" id="flowHd">
-          <button class="btn ghost mini" id="dayPrev" aria-label="Previous day">←</button>
-          <h2 id="dayTitle" style="margin:0 auto;">—</h2>
-          <button class="btn ghost mini" id="dayNext" aria-label="Next day">→</button>
+        <div class="hd">
+          <h2>Agenda</h2>
+          <div class="hint" id="tzHint">—</div>
         </div>
         <div class="bd">
           <div id="agenda"></div>
         </div>
         <div class="ft">
-          <div id="miniMonth"></div>
+          <button class="btn ghost" id="openCalendar">Open Calendar</button>
         </div>
       </section>
     </div>
@@ -340,31 +286,21 @@
       return new Intl.DateTimeFormat(undefined, { month:'short', day:'numeric' }).format(d);
     }
     function addDays(d, n){ const c = new Date(d); c.setDate(c.getDate()+n); return c; }
-    
-    // ----- Date anchors
-    function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-    const TODAY = startOfDay(new Date());
-    let SELECTED = TODAY; // ← the day your FlowOS panel shows
 
     // ------------ Demo toggle (mock vs live fetch)
     let DEMO = true;
-    document.addEventListener('DOMContentLoaded', () => {
-      const toggleDemo = $('#toggleDemo');
-      if (toggleDemo) {
-        toggleDemo.addEventListener('click', () => {
-          DEMO = !DEMO;
-          toggleDemo.textContent = `Demo: ${DEMO ? 'On' : 'Off'}`;
-          loadAll();
-        });
-      }
+    $('#toggleDemo').addEventListener('click', () => {
+      DEMO = !DEMO;
+      $('#toggleDemo').textContent = `Demo: ${DEMO ? 'On' : 'Off'}`;
+      loadAll();
     });
 
     // ------------ Mock data
     function mockTop3(){
       return [
-        { title: "cut front grass", due: "", completed: false},
-        { title: "pay electric", due: "", completed: false},
-        { title: "migrate webhook to tailscale", due: "", completed: false},
+        { title: "cut front grass", due: "", completed: false, tag:"#prepandmaintenance" },
+        { title: "pay electric", due: "", completed: false, tag:"#administrative" },
+        { title: "migrate webhook to tailscale", due: "", completed: false, tag:"#projectwork" },
       ];
     }
     function mockCrash(){
@@ -443,23 +379,27 @@
 }
 
     // --- Mock agenda data like your screenshots
-    function mockAgenda(forDate = SELECTED){
-      const d0 = startOfDay(forDate);
-      const at = (d,h,m=0)=> new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
-      const weekday = new Intl.DateTimeFormat(undefined, { weekday:'long' }).format(d0);
+    function mockAgenda(){
+    const now = new Date();
+    const d1 = new Date(now);
+    d1.setDate(d1.getDate() + 1); // Example: Monday (tomorrow)
+    const at = (d, h, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
 
-      return [{
-        label: weekday,
-        date: d0,
-        allDay: [{ title:"Recovery Focused" }],
+    return [
+        {
+        label: "Monday",
+        date: d1,
+        allDay: [{ title: "Recovery Focused" }],
         events: [
-          { title:"water plants",          start: at(d0,7,30),   color:"green" },
-          { title:"precor stretch circuit",start: at(d0,9,30),   color:"blue" },
-          { title:"Health",                start: at(d0,9,30), end: at(d0,10,0), color:"gray" },
-          { title:"mom dinner",            start: at(d0,19,30),  color:"purple" },
-          { title:"sleep",                 start: at(d0,23,15),  color:"blue" },
-        ]
-      }];
+            
+            { title: "water plants", start: at(d1, 7, 30), color: "green" },
+            { title: "precor stretch circuit", start: at(d1, 9, 30), color: "blue" },
+            { title: "Health", start: at(d1, 9, 30), end: at(d1, 10, 0), color: "gray" },
+            { title: "mom dinner", start: at(d1, 19, 30), color: "purple" },
+            { title: "sleep", start: at(d1, 23, 15), color: "blue" },
+        ],
+        },
+    ];
     }
 
     // ------------ Live fetch helpers (wire these to your API later)
@@ -475,9 +415,7 @@
 
     // ------------ Renderers
     function renderTop3(items){
-      const wrap = $('#top3List'); 
-      wrap.innerHTML = "";
-
+      const wrap = $('#top3List'); wrap.innerHTML = "";
       items.forEach((it, idx)=>{
         const row = document.createElement('div');
         row.className = 'item' + (it.completed ? ' done' : '');
@@ -485,71 +423,79 @@
           <label class="chx" aria-label="toggle done">
             <span class="dot"></span>
           </label>
-          <div class="main">
+          <div>
             <div class="title">${escapeHtml(it.title)}</div>
             <div class="meta">${it.tag ? escapeHtml(it.tag) : ''}</div>
           </div>
+          <div class="row">
+            <span class="tag">Top 3</span>
+            <button class="btn ghost kebab" data-action="remove" title="Remove">⋯</button>
+          </div>
         `;
-
-        // toggle complete
-        row.querySelector('.chx').addEventListener('click', ()=>{
+        row.querySelector('.chx').addEventListener('click', async ()=>{
           row.classList.toggle('done');
         });
-
+        row.querySelector('[data-action="remove"]').addEventListener('click', async ()=>{
+          row.style.opacity = .5;
+          setTimeout(()=> row.remove(), 180);
+        });
         wrap.appendChild(row);
       });
     }
 
     function renderCrash(items){
-      const wrap = $('#crashList');
-      wrap.innerHTML = "";
+    const wrap = $('#crashList'); 
+    wrap.innerHTML = "";
 
-      items.forEach((it)=>{
+    items.forEach((it)=>{
         const due = it.due ? fmtDate(new Date(it.due)) : "—";
 
         // Row (day header)
         const row = document.createElement('div');
         row.className = 'item';
         row.innerHTML = `
-          <label class="chx" aria-label="toggle done">
+        <label class="chx" aria-label="toggle done">
             <span class="dot"></span>
-          </label>
-          <div class="main">
+        </label>
+        <div>
             <div class="title">${escapeHtml(it.title)}</div>
             <div class="meta">Due: ${due}</div>
-          </div>
-          <button class="btn ghost chev" type="button" aria-expanded="false">▸</button>
+        </div>
+        <div class="row">
+            <span class="tag">Crash 7</span>
+            <button class="btn ghost chev" type="button" aria-expanded="false">▸</button>
+        </div>
         `;
 
         // Subtask list (hidden by default)
         const sub = document.createElement('div');
         sub.className = 'sublist';
         (it.subtasks || []).forEach(txt=>{
-          const li = document.createElement('div');
-          li.className = 'subitem';
-          li.innerHTML = `
+        const li = document.createElement('div');
+        li.className = 'subitem';
+        li.innerHTML = `
             <span class="tick" aria-hidden="true"></span>
             <span class="subtxt">${escapeHtml(txt)}</span>
-          `;
-          sub.appendChild(li);
+        `;
+        sub.appendChild(li);
         });
 
-        // Toggle subtasks open/closed
+        // Toggle
         const toggleBtn = row.querySelector('.chev');
         toggleBtn.addEventListener('click', ()=>{
-          const open = sub.classList.toggle('open');
-          toggleBtn.textContent = open ? '▾' : '▸';
-          toggleBtn.setAttribute('aria-expanded', String(open));
+        const open = sub.classList.toggle('open');
+        toggleBtn.textContent = open ? '▾' : '▸';
+        toggleBtn.setAttribute('aria-expanded', String(open));
         });
 
-        // Mark day as done
+        // Optional: strike-through the day when checkbox clicked
         row.querySelector('.chx').addEventListener('click', ()=>{
-          row.classList.toggle('done');
+        row.classList.toggle('done');
         });
 
         wrap.appendChild(row);
         wrap.appendChild(sub);
-      });
+    });
     }
     
     function renderAgenda(days){
@@ -606,40 +552,28 @@
     }
 
     // ------------ Quick add
-    document.addEventListener('DOMContentLoaded', () => {
-      const top3Form = $('#top3Form');
-      if (top3Form) {
-        top3Form.addEventListener('submit', async (e)=>{
-          e.preventDefault();
-          const fd = new FormData(e.target);
-          const title = String(fd.get('title')||'').trim();
-          if(!title) return;
-          if(DEMO){
-            const items = mockTop3();
-            items.unshift({title, due:"", completed:false, tag:"#QuickAdd"});
-            renderTop3(items);
-          }else{
-            await apiPost('/reminder', { list:"Top 3", title });
-            await loadTop3();
-          }
-          e.target.reset();
-        });
+    $('#top3Form').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const title = String(fd.get('title')||'').trim();
+      if(!title) return;
+      if(DEMO){
+        const items = mockTop3();
+        items.unshift({title, due:"", completed:false, tag:"#QuickAdd"});
+        renderTop3(items);
+      }else{
+        await apiPost('/reminder', { list:"Top 3", title });
+        await loadTop3();
       }
+      e.target.reset();
     });
 
     // ------------ Actions (simulate opening native apps)
-    document.addEventListener('DOMContentLoaded', () => {
-      const openReminders = $('#openReminders');
-      const quickAddTop = $('#quickAddTop');
-      
-      if (openReminders) {
-        openReminders.addEventListener('click', () => alert('Opening Reminders (simulated)…'));
-      }
-      
-      if (quickAddTop) {
-        quickAddTop.addEventListener('click', () => $('.in[name="title"]').focus());
-      }
-    });
+    $('#revealTop3').addEventListener('click', ()=> alert('Would call /open { list:"Top 3" } → opens Reminders'));
+    $('#revealCrash').addEventListener('click', ()=> alert('Would call /open { list:"Crash Plan" } → opens Reminders'));
+    $('#openCalendar').addEventListener('click', ()=> alert('Would call /open-calendar → opens Calendar'));
+    $('#openReminders').addEventListener('click', ()=> alert('Opening Reminders (simulated)…'));
+    $('#quickAddTop').addEventListener('click', ()=> $('.in[name="title"]').focus());
 
     // ------------ Loaders
     async function loadTop3(){
@@ -650,98 +584,20 @@
       const items = DEMO ? mockCrash() : await apiGet('/crash7');
       renderCrash(items);
     }
-    
-    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
-    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
-
-    function renderMiniMonth(anchor = SELECTED){
-      const mount = document.getElementById('miniMonth');
-      if(!mount) return;
-      mount.innerHTML = "";
-
-      const monthStart = startOfMonth(anchor);
-      const monthEnd   = endOfMonth(anchor);
-      // Find grid start on Sunday (or your locale's week start)
-      const gridStart = addDays(monthStart, -monthStart.getDay());
-      // Headers
-      "SMTWTFS".split("").forEach(ch=>{
-        const h = document.createElement('div');
-        h.className = 'mm-cell mm-head';
-        h.textContent = ch;
-        mount.appendChild(h);
-      });
-      // 6 weeks * 7 days
-      for(let i=0;i<42;i++){
-        const d = addDays(gridStart, i);
-        const cell = document.createElement('div');
-        cell.className = 'mm-cell';
-        if(d.getMonth() !== anchor.getMonth()) cell.classList.add('mm-out');
-        if(+startOfDay(d) === +startOfDay(TODAY)) cell.classList.add('mm-today');
-        if(+startOfDay(d) === +startOfDay(SELECTED)) cell.classList.add('mm-sel');
-        cell.textContent = d.getDate();
-        cell.addEventListener('click', ()=>{
-          SELECTED = startOfDay(d);
-          updateDayTitle(SELECTED);
-          loadAgenda();           // re-render agenda for that day
-          renderMiniMonth(SELECTED); // re-render month selection
-        });
-        mount.appendChild(cell);
-      }
-    }
-    
-    // Setup day navigation after DOM is loaded
-    document.addEventListener('DOMContentLoaded', () => {
-      const prevBtn = document.getElementById('dayPrev');
-      const nextBtn = document.getElementById('dayNext');
-      
-      if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-          SELECTED = addDays(SELECTED, -1);
-          loadAgenda();
-          renderMiniMonth(SELECTED);
-        });
-      }
-      
-      if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-          SELECTED = addDays(SELECTED, +1);
-          loadAgenda();
-          renderMiniMonth(SELECTED);
-        });
-      }
-    });
-    function updateDayTitle(d){
-      const w = new Intl.DateTimeFormat(undefined,{ weekday:'long'}).format(d);
-      const md = new Intl.DateTimeFormat(undefined,{ month:'short', day:'numeric'}).format(d);
-      const dayTitle = document.getElementById('dayTitle');
-      if (dayTitle) dayTitle.textContent = `${w} • ${md}`;
-    }
-    
     async function loadAgenda(){
-      const days = DEMO ? mockAgenda(SELECTED) : await apiGet('/agenda');
+      const days = DEMO ? mockAgenda() : await apiGet('/agenda');
       renderAgenda(days);
-      updateDayTitle(SELECTED);
     }
-    
     async function loadAll(){
       const now = new Date();
-      const nowHint = $('#nowHint');
-      const rangeHint = $('#rangeHint');
-      const tzHint = $('#tzHint');
-      
-      if (nowHint) nowHint.textContent = fmtDate(now) + " · " + fmtTime(now);
-      if (rangeHint) rangeHint.textContent = `${fmtDate(SELECTED)} → ${fmtDate(addDays(SELECTED,6))}`;
-      if (tzHint) tzHint.textContent = `Local time: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
-      
+      $('#nowHint').textContent = fmtDate(now) + " · " + fmtTime(now);
+      $('#rangeHint').textContent = `${fmtDate(now)} → ${fmtDate(addDays(now,6))}`;
+      $('#tzHint').textContent = `Local time: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
       await Promise.all([loadTop3(), loadCrash(), loadAgenda()]);
-      renderMiniMonth(SELECTED);
     }
 
     // ------------ Misc
-    document.addEventListener('DOMContentLoaded', () => {
-      const yearEl = $('#year');
-      if (yearEl) yearEl.textContent = new Date().getFullYear();
-    });
+    $('#year').textContent = new Date().getFullYear();
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
 
     // Init

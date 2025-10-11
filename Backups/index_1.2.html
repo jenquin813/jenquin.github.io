@@ -237,23 +237,6 @@
       padding:6px 10px;
     }
     .item .kebab:hover{ color:var(--accent); transform: translateY(-1px); }
-    
-    .btn.mini{ padding:6px 10px; border-radius:10px }
-    #miniMonth{
-      display:grid; gap:6px;
-      grid-template-columns: repeat(7, 1fr);
-      width:100%;
-    }
-    .mm-cell{
-      text-align:center; font-size:12px; padding:6px 0;
-      border:1px solid var(--border); border-radius:8px;
-      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.04));
-      cursor:pointer; user-select:none;
-    }
-    .mm-head{ font-weight:600; color:var(--muted); cursor:default; }
-    .mm-out{ opacity:.45 }
-    .mm-today{ outline:2px solid var(--accent); }
-    .mm-sel{ background: rgba(110,168,254,.18); border-color: rgba(110,168,254,.45); }
   </style>
 </head>
 <body>
@@ -309,16 +292,15 @@
 
       <!-- Right column: Agenda (Apple-style) -->
       <section class="panel" id="agendaPanel">
-        <div class="hd" id="flowHd">
-          <button class="btn ghost mini" id="dayPrev" aria-label="Previous day">←</button>
-          <h2 id="dayTitle" style="margin:0 auto;">—</h2>
-          <button class="btn ghost mini" id="dayNext" aria-label="Next day">→</button>
+        <div class="hd">
+          <h2>FlowOs</h2>
+          <div class="hint" id="tzHint">—</div>
         </div>
         <div class="bd">
           <div id="agenda"></div>
         </div>
         <div class="ft">
-          <div id="miniMonth"></div>
+          <button class="btn ghost" id="openCalendar">Open Calendar</button>
         </div>
       </section>
     </div>
@@ -340,23 +322,13 @@
       return new Intl.DateTimeFormat(undefined, { month:'short', day:'numeric' }).format(d);
     }
     function addDays(d, n){ const c = new Date(d); c.setDate(c.getDate()+n); return c; }
-    
-    // ----- Date anchors
-    function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-    const TODAY = startOfDay(new Date());
-    let SELECTED = TODAY; // ← the day your FlowOS panel shows
 
     // ------------ Demo toggle (mock vs live fetch)
     let DEMO = true;
-    document.addEventListener('DOMContentLoaded', () => {
-      const toggleDemo = $('#toggleDemo');
-      if (toggleDemo) {
-        toggleDemo.addEventListener('click', () => {
-          DEMO = !DEMO;
-          toggleDemo.textContent = `Demo: ${DEMO ? 'On' : 'Off'}`;
-          loadAll();
-        });
-      }
+    $('#toggleDemo').addEventListener('click', () => {
+      DEMO = !DEMO;
+      $('#toggleDemo').textContent = `Demo: ${DEMO ? 'On' : 'Off'}`;
+      loadAll();
     });
 
     // ------------ Mock data
@@ -443,23 +415,27 @@
 }
 
     // --- Mock agenda data like your screenshots
-    function mockAgenda(forDate = SELECTED){
-      const d0 = startOfDay(forDate);
-      const at = (d,h,m=0)=> new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
-      const weekday = new Intl.DateTimeFormat(undefined, { weekday:'long' }).format(d0);
+    function mockAgenda(){
+    const now = new Date();
+    const d1 = new Date(now);
+    d1.setDate(d1.getDate() + 1); // Example: Monday (tomorrow)
+    const at = (d, h, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
 
-      return [{
-        label: weekday,
-        date: d0,
-        allDay: [{ title:"Recovery Focused" }],
+    return [
+        {
+        label: "Monday",
+        date: d1,
+        allDay: [{ title: "Recovery Focused" }],
         events: [
-          { title:"water plants",          start: at(d0,7,30),   color:"green" },
-          { title:"precor stretch circuit",start: at(d0,9,30),   color:"blue" },
-          { title:"Health",                start: at(d0,9,30), end: at(d0,10,0), color:"gray" },
-          { title:"mom dinner",            start: at(d0,19,30),  color:"purple" },
-          { title:"sleep",                 start: at(d0,23,15),  color:"blue" },
-        ]
-      }];
+            
+            { title: "water plants", start: at(d1, 7, 30), color: "green" },
+            { title: "precor stretch circuit", start: at(d1, 9, 30), color: "blue" },
+            { title: "Health", start: at(d1, 9, 30), end: at(d1, 10, 0), color: "gray" },
+            { title: "mom dinner", start: at(d1, 19, 30), color: "purple" },
+            { title: "sleep", start: at(d1, 23, 15), color: "blue" },
+        ],
+        },
+    ];
     }
 
     // ------------ Live fetch helpers (wire these to your API later)
@@ -606,40 +582,26 @@
     }
 
     // ------------ Quick add
-    document.addEventListener('DOMContentLoaded', () => {
-      const top3Form = $('#top3Form');
-      if (top3Form) {
-        top3Form.addEventListener('submit', async (e)=>{
-          e.preventDefault();
-          const fd = new FormData(e.target);
-          const title = String(fd.get('title')||'').trim();
-          if(!title) return;
-          if(DEMO){
-            const items = mockTop3();
-            items.unshift({title, due:"", completed:false, tag:"#QuickAdd"});
-            renderTop3(items);
-          }else{
-            await apiPost('/reminder', { list:"Top 3", title });
-            await loadTop3();
-          }
-          e.target.reset();
-        });
+    $('#top3Form').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const title = String(fd.get('title')||'').trim();
+      if(!title) return;
+      if(DEMO){
+        const items = mockTop3();
+        items.unshift({title, due:"", completed:false, tag:"#QuickAdd"});
+        renderTop3(items);
+      }else{
+        await apiPost('/reminder', { list:"Top 3", title });
+        await loadTop3();
       }
+      e.target.reset();
     });
 
     // ------------ Actions (simulate opening native apps)
-    document.addEventListener('DOMContentLoaded', () => {
-      const openReminders = $('#openReminders');
-      const quickAddTop = $('#quickAddTop');
-      
-      if (openReminders) {
-        openReminders.addEventListener('click', () => alert('Opening Reminders (simulated)…'));
-      }
-      
-      if (quickAddTop) {
-        quickAddTop.addEventListener('click', () => $('.in[name="title"]').focus());
-      }
-    });
+    $('#openCalendar').addEventListener('click', ()=> alert('Would call /open-calendar → opens Calendar'));
+    $('#openReminders').addEventListener('click', ()=> alert('Opening Reminders (simulated)…'));
+    $('#quickAddTop').addEventListener('click', ()=> $('.in[name="title"]').focus());
 
     // ------------ Loaders
     async function loadTop3(){
@@ -650,98 +612,20 @@
       const items = DEMO ? mockCrash() : await apiGet('/crash7');
       renderCrash(items);
     }
-    
-    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
-    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
-
-    function renderMiniMonth(anchor = SELECTED){
-      const mount = document.getElementById('miniMonth');
-      if(!mount) return;
-      mount.innerHTML = "";
-
-      const monthStart = startOfMonth(anchor);
-      const monthEnd   = endOfMonth(anchor);
-      // Find grid start on Sunday (or your locale's week start)
-      const gridStart = addDays(monthStart, -monthStart.getDay());
-      // Headers
-      "SMTWTFS".split("").forEach(ch=>{
-        const h = document.createElement('div');
-        h.className = 'mm-cell mm-head';
-        h.textContent = ch;
-        mount.appendChild(h);
-      });
-      // 6 weeks * 7 days
-      for(let i=0;i<42;i++){
-        const d = addDays(gridStart, i);
-        const cell = document.createElement('div');
-        cell.className = 'mm-cell';
-        if(d.getMonth() !== anchor.getMonth()) cell.classList.add('mm-out');
-        if(+startOfDay(d) === +startOfDay(TODAY)) cell.classList.add('mm-today');
-        if(+startOfDay(d) === +startOfDay(SELECTED)) cell.classList.add('mm-sel');
-        cell.textContent = d.getDate();
-        cell.addEventListener('click', ()=>{
-          SELECTED = startOfDay(d);
-          updateDayTitle(SELECTED);
-          loadAgenda();           // re-render agenda for that day
-          renderMiniMonth(SELECTED); // re-render month selection
-        });
-        mount.appendChild(cell);
-      }
-    }
-    
-    // Setup day navigation after DOM is loaded
-    document.addEventListener('DOMContentLoaded', () => {
-      const prevBtn = document.getElementById('dayPrev');
-      const nextBtn = document.getElementById('dayNext');
-      
-      if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-          SELECTED = addDays(SELECTED, -1);
-          loadAgenda();
-          renderMiniMonth(SELECTED);
-        });
-      }
-      
-      if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-          SELECTED = addDays(SELECTED, +1);
-          loadAgenda();
-          renderMiniMonth(SELECTED);
-        });
-      }
-    });
-    function updateDayTitle(d){
-      const w = new Intl.DateTimeFormat(undefined,{ weekday:'long'}).format(d);
-      const md = new Intl.DateTimeFormat(undefined,{ month:'short', day:'numeric'}).format(d);
-      const dayTitle = document.getElementById('dayTitle');
-      if (dayTitle) dayTitle.textContent = `${w} • ${md}`;
-    }
-    
     async function loadAgenda(){
-      const days = DEMO ? mockAgenda(SELECTED) : await apiGet('/agenda');
+      const days = DEMO ? mockAgenda() : await apiGet('/agenda');
       renderAgenda(days);
-      updateDayTitle(SELECTED);
     }
-    
     async function loadAll(){
       const now = new Date();
-      const nowHint = $('#nowHint');
-      const rangeHint = $('#rangeHint');
-      const tzHint = $('#tzHint');
-      
-      if (nowHint) nowHint.textContent = fmtDate(now) + " · " + fmtTime(now);
-      if (rangeHint) rangeHint.textContent = `${fmtDate(SELECTED)} → ${fmtDate(addDays(SELECTED,6))}`;
-      if (tzHint) tzHint.textContent = `Local time: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
-      
+      $('#nowHint').textContent = fmtDate(now) + " · " + fmtTime(now);
+      $('#rangeHint').textContent = `${fmtDate(now)} → ${fmtDate(addDays(now,6))}`;
+      $('#tzHint').textContent = `Local time: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
       await Promise.all([loadTop3(), loadCrash(), loadAgenda()]);
-      renderMiniMonth(SELECTED);
     }
 
     // ------------ Misc
-    document.addEventListener('DOMContentLoaded', () => {
-      const yearEl = $('#year');
-      if (yearEl) yearEl.textContent = new Date().getFullYear();
-    });
+    $('#year').textContent = new Date().getFullYear();
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
 
     // Init

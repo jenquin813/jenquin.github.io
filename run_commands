@@ -1,0 +1,8 @@
+add the modified files:
+git add 
+
+commit the changes:
+git commit -m ""
+
+push the changes to the remote repository:
+git push origin master
