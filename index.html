@@ -752,32 +752,22 @@
 
     // ------------ Demo mode via URL parameter
     // Visit site normally for live mode, add ?demo=1 for demo mode
-    // Check if demo mode is active via URL parameter
-    const isDemoMode = new URLSearchParams(window.location.search).has('demo');
-    // Store previous demo state to detect changes
-    let previousDemoState = localStorage.getItem('_demoState') === 'true';
-    // Set current demo state
-    let DEMO = isDemoMode;
+    // Simple flag for demo mode
+    let DEMO = new URLSearchParams(window.location.search).has('demo');
     let CRASH_STATE = null;
     
-    // If demo mode has changed, reset the demo storage
-    if (DEMO !== previousDemoState) {
-      if (DEMO) {
-        // Switching to demo mode - reset all demo storage
-        resetDemoStorage();
-        console.log('Demo mode activated - storage reset');
-      }
-      // Store the current demo state
-      localStorage.setItem('_demoState', DEMO.toString());
-    }
+    // In-memory storage for demo mode
+    const DEMO_STORAGE = {};
     
     // ------------ Storage wrappers for demo vs live persistence
     // These wrappers provide a consistent interface for storage operations
     // In demo mode, they use memory storage that resets on page refresh
     // In live mode, they use localStorage for persistence
     
-    // In-memory storage for demo mode
-    const DEMO_STORAGE = {};
+    // ------------ Storage wrappers for demo vs live persistence
+    // These wrappers provide a consistent interface for storage operations
+    // In demo mode, they use memory storage that resets on page refresh
+    // In live mode, they use localStorage for persistence
     
     // Get a value from storage (localStorage in live mode, memory in demo mode)
     function storageGet(key) {
@@ -810,12 +800,6 @@
       }
     }
     
-    // Reset all demo storage (used when toggling demo mode)
-    function resetDemoStorage() {
-      Object.keys(DEMO_STORAGE).forEach(key => {
-        delete DEMO_STORAGE[key];
-      });
-    }
     
     // ------------ Mock data
     function mockTop3(){
