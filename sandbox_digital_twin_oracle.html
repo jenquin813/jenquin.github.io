@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Digital Twin Oracle • Sandbox</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  /* ==== your design tokens ==== */
+  :root{
+    --bg:#0b0c10; --panel:#111318; --muted:#7b8496; --text:#e9edf5;
+    --accent:#6ea8fe; --accent-2:#7df2c9; --ok:#76ff9b; --border:#20232b;
+    --shadow:0 8px 24px rgba(0,0,0,.35);
+    --radius:14px; --radius-sm:10px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f6f7fb; --panel:#ffffff; --muted:#6b7280; --text:#0f172a;
+      --accent:#2556ff; --accent-2:#0ea5e9; --border:#e5e7eb;
+      --shadow:0 10px 24px rgba(0,0,0,.08);
+    }
+  }
+
+  /* page shell just to center the card */
+  html,body{height:100%}
+  body{
+    margin:0; background:
+      radial-gradient(1200px 800px at 80% -10%, rgba(110,168,254,.12), transparent 60%),
+      radial-gradient(900px 700px at -10% 20%, rgba(125,242,201,.12), transparent 60%),
+      var(--bg);
+    color:var(--text); font:14px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+  }
+  .wrap{max-width:860px;margin:32px auto;padding:0 16px}
+
+  /* ======= Agenda card (copied to match your look) ======= */
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow); overflow:clip;
+  }
+  .panel .hd{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:14px 16px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06));
+  }
+  .panel .hd h2{margin:0;font-size:15px;letter-spacing:.3px}
+  .panel .bd{padding:12px 16px}
+
+  .agenda-day{
+    border:1px solid var(--border); border-radius:var(--radius);
+    background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+    overflow:hidden; position:relative;
+  }
+  .agenda-day-hd{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 12px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06));
+    font-size:13px; letter-spacing:.2px;
+  }
+  .agenda-day-hd .date{ color:var(--muted) }
+  .agenda-day-hd > :first-child{
+    display:inline-block; padding:6px 10px; border:1px solid rgba(255,255,255,.05);
+    border-radius:999px; background:linear-gradient(180deg, rgba(255,255,255,.015), rgba(0,0,0,.12));
+    font-weight:400; font-size:12px; letter-spacing:.2px; color:var(--muted);
+    box-shadow:inset 0 0 2px rgba(0,0,0,.25);
+  }
+  @media (prefers-color-scheme: light){
+    .agenda-day-hd > :first-child{
+      border:1px solid rgba(0,0,0,.05);
+      background:linear-gradient(180deg, rgba(255,255,255,.6), rgba(0,0,0,.02));
+      color:var(--muted);
+    }
+  }
+
+  /* live horizontal 'now' line */
+  .now-indicator{
+    position:absolute; left:12px; right:12px; height:2px; border-radius:2px;
+    background:rgba(255,255,255,.35); pointer-events:none; z-index:20; transition:top .2s ease-out;
+  }
+  .now-indicator::before{
+    content:""; position:absolute; left:-4px; top:-3px; width:8px; height:8px; border-radius:50%;
+    background:rgba(255,255,255,.6); box-shadow:0 0 6px rgba(255,255,255,.25);
+  }
+  @media (prefers-color-scheme: light){
+    .now-indicator{background:rgba(0,0,0,.25)} .now-indicator::before{background:rgba(0,0,0,.45)}
+  }
+
+  /* ==== Focus Zone Loading Bar (new) ==== */
+  .zonebar{
+    position:relative; height:26px; margin:10px 12px 0; border:1px solid var(--border);
+    border-radius:999px; overflow:hidden;
+    background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+  }
+  .zb-seg{position:absolute; top:0; bottom:0; opacity:.28}
+  .zb-label{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:11px; color:var(--muted); white-space:nowrap; pointer-events:none;
+    text-shadow:0 1px 0 rgba(0,0,0,.35);
+  }
+  .zb-fill{position:absolute; inset:0 auto 0 0; width:0%;
+    background:linear-gradient(90deg, rgba(255,255,255,.10), rgba(255,255,255,.03));}
+  .zb-dot{
+    position:absolute; top:50%; transform:translate(-50%,-50%);
+    width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.9);
+    box-shadow:0 0 8px rgba(255,255,255,.45); left:0%;
+  }
+
+  /* area row (left) + all-day lane (right) */
+  .area-row{
+    display:flex; align-items:center; gap:8px; padding:10px 12px; border-top:1px solid var(--border);
+    overflow-x:auto;
+  }
+  .area-pill{
+    padding:6px 10px; border:1px solid rgba(255,255,255,.05); border-radius:999px;
+    background:linear-gradient(180deg, rgba(255,255,255,.015), rgba(0,0,0,.12));
+    color:var(--muted); font-size:12px; white-space:nowrap;
+    box-shadow:inset 0 0 2px rgba(0,0,0,.25);
+  }
+  .allday-lane{display:flex; gap:8px}
+  .allday-pill{
+    padding:6px 10px; border:1px solid var(--border); border-radius:999px;
+    background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+    color:var(--muted); font-size:12px; white-space:nowrap;
+  }
+
+  .agenda-list{display:flex; flex-direction:column}
+  .agenda-row{
+    display:grid; grid-template-columns:20px 1fr auto; gap:10px; align-items:center;
+    padding:10px 12px; border-top:1px solid var(--border);
+  }
+  .agenda-row:first-child{border-top:none}
+  .agenda-row .dot{width:10px; height:10px; border-radius:50%; border:2px solid var(--border)}
+  .dot.blue{background:rgba(110,168,254,.9)} .dot.green{background:rgba(125,242,201,.95)}
+  .dot.purple{background:#b38aff} .dot.gray{background:#9aa3b2}
+  .agenda-title{font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .agenda-meta{color:var(--muted); font-size:12px}
+  .agenda-row .chx{
+    width:18px;height:18px;border-radius:6px;border:1px solid var(--border);
+    display:inline-grid;place-items:center;cursor:pointer;background:transparent;
+  }
+  .agenda-row .chx .inner{width:10px;height:10px;border-radius:3px;background:transparent;opacity:0}
+  .agenda-row.done .chx .inner{background:var(--ok);opacity:1}
+  .agenda-row.done .agenda-title{color:var(--muted);text-decoration:line-through}
+
+  /* --- Digital Twin (Oracle) --- */
+  .oracle-wrap{
+    display:flex; align-items:center; justify-content:center;
+    height: 260px; position:relative; overflow:hidden;
+    background: radial-gradient(600px 320px at 50% -30%, rgba(125,242,201,.08), transparent 60%),
+                radial-gradient(520px 280px at 120% 120%, rgba(110,168,254,.10), transparent 60%);
+    border:1px solid var(--border); border-radius: var(--radius);
+  }
+
+  .oracle{
+    position:relative; width: 160px; aspect-ratio: 3/5;
+    filter: drop-shadow(0 12px 28px rgba(0,0,0,.45));
+  }
+
+  .oracle .aura{
+    position:absolute; inset:-18%;
+    border-radius: 30% 30% 36% 36% / 28% 28% 52% 52%;
+    background: radial-gradient(60% 60% at 50% 35%, rgba(255,255,255,.35), transparent 60%),
+                radial-gradient(80% 80% at 50% 50%, rgba(110,168,254,.25), transparent 65%);
+    filter: blur(18px) saturate(1.1);
+    animation: auraPulse 3.6s ease-in-out infinite;
+    opacity:.9;
+  }
+
+  .oracle .body{
+    position:absolute; inset:0; display:block;
+    background:
+      radial-gradient(45% 45% at 50% 20%, rgba(255,255,255,.85), rgba(255,255,255,.15) 60%),
+      linear-gradient(180deg, rgba(110,168,254,.9), rgba(125,242,201,.7) 60%, rgba(110,168,254,.85));
+    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 160"><path d="M50 12c12 0 22 10 22 22s-10 22-22 22-22-10-22-22S38 12 50 12zM32 73c12-6 24-6 36 0 14 7 22 20 22 36v38H10v-38c0-16 8-29 22-36z"/></svg>') center/contain no-repeat;
+    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 160"><path d="M50 12c12 0 22 10 22 22s-10 22-22 22-22-10-22-22S38 12 50 12zM32 73c12-6 24-6 36 0 14 7 22 20 22 36v38H10v-38c0-16 8-29 22-36z"/></svg>') center/contain no-repeat;
+    border-radius: 18px;
+    animation: subtleFloat 6s ease-in-out infinite;
+  }
+
+  /* Zone colors */
+  .oracle[data-zone="Rest & Recharge"] .aura{background:radial-gradient(60% 60% at 50% 35%,rgba(255,255,255,.35),transparent 60%),radial-gradient(80% 80% at 50% 50%,rgba(125,242,201,.30),transparent 65%)}
+  .oracle[data-zone="Health"] .aura{background:radial-gradient(60% 60% at 50% 35%,rgba(255,255,255,.35),transparent 60%),radial-gradient(80% 80% at 50% 50%,rgba(118,255,155,.30),transparent 65%);animation-duration:2.2s}
+  .oracle[data-zone="Creative / Project Work"] .aura{background:radial-gradient(60% 60% at 50% 35%,rgba(255,255,255,.35),transparent 60%),radial-gradient(80% 80% at 50% 50%,rgba(110,168,254,.30),transparent 65%)}
+  .oracle[data-zone="Review & Planning"] .aura{background:radial-gradient(60% 60% at 50% 35%,rgba(255,255,255,.35),transparent 60%),radial-gradient(80% 80% at 50% 50%,rgba(179,138,255,.28),transparent 65%)}
+  .oracle[data-zone="Errands & Logistics"] .aura{background:radial-gradient(60% 60% at 50% 35%,rgba(255,255,255,.35),transparent 60%),radial-gradient(80% 80% at 50% 50%,rgba(255,176,90,.30),transparent 65%)}
+  .oracle[data-zone="Social & Relationships"] .aura{background:radial-gradient(60% 60% at 50% 35%,rgba(255,255,255,.35),transparent 60%),radial-gradient(80% 80% at 50% 50%,rgba(255,122,122,.28),transparent 65%)}
+  .oracle[data-zone="Flex"] .aura{background:radial-gradient(60% 60% at 50% 35%,rgba(255,255,255,.35),transparent 60%),radial-gradient(80% 80% at 50% 50%,rgba(154,163,178,.28),transparent 65%)}
+
+  /* Animations */
+  @keyframes auraPulse{0%,100%{transform:scale(.96);opacity:.85}50%{transform:scale(1.03);opacity:1}}
+  @keyframes subtleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+  .oracle-legend{margin-top:10px;font-size:12px;color:var(--muted);text-align:center}
+  
+  .hint{color:var(--muted);font-size:13px}
+
+  /* ===== Hologram look (full-body) ===== */
+  .oracle.holo{
+    --holo-a: 180;            /* base hue; gets overridden per zone below */
+    --holo-s: 90%;
+    --holo-l: 60%;
+    --holo-glow: hsla(var(--holo-a), var(--holo-s), var(--holo-l), .55);
+    --holo-glow-2: hsla(calc(var(--holo-a) + 30), 80%, 65%, .35);
+    --holo-line: hsla(var(--holo-a), 95%, 75%, .95);
+    --holo-scan: hsla(var(--holo-a), 95%, 75%, .2);
+    --holo-grain: rgba(255,255,255,.08);
+    width: 200px; aspect-ratio: 3/5;
+    position: relative;
+    isolation: isolate;            /* keep blending tidy */
+  }
+
+  /* zone hues -> hologram palette */
+  .oracle.holo[data-zone="Rest & Recharge"]{ --holo-a: 175 }
+  .oracle.holo[data-zone="Health"]{ --holo-a: 155 }
+  .oracle.holo[data-zone="Creative / Project Work"]{ --holo-a: 210 }
+  .oracle.holo[data-zone="Review & Planning"]{ --holo-a: 265 }
+  .oracle.holo[data-zone="Errands & Logistics"]{ --holo-a: 35 }
+  .oracle.holo[data-zone="Social & Relationships"]{ --holo-a: 320 }
+  .oracle.holo[data-zone="Flex"]{ --holo-a: 220 }
+
+  /* big soft glow behind the figure */
+  .holo .holo-glow{
+    position:absolute; inset:-24%;
+    background:
+      radial-gradient(60% 50% at 50% 35%, var(--holo-glow), transparent 60%),
+      radial-gradient(75% 60% at 50% 60%, var(--holo-glow-2), transparent 70%);
+    filter: blur(18px) saturate(1.15);
+    animation: holoPulse 3.8s ease-in-out infinite;
+  }
+
+  /* full-body mask (SVG in data URL) */
+  .holo .holo-body{
+    position:absolute; inset:0;
+    background:
+      linear-gradient(180deg,
+        hsla(var(--holo-a), 85%, 78%, .95) 0%,
+        hsla(var(--holo-a), 85%, 68%, .85) 45%,
+        hsla(var(--holo-a), 85%, 58%, .90) 100%);
+    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200"><g fill="black"><circle cx="60" cy="26" r="16"/><path d="M36 48h48v30c0 10-8 18-18 18H54c-9 0-18-8-18-18V48z"/><rect x="22" y="70" width="20" height="46" rx="10"/><rect x="78" y="70" width="20" height="46" rx="10"/><path d="M46 96h28v60H46z"/><path d="M46 156h20v40H46z"/><path d="M66 156h20v40H66z"/></g></svg>') center/80% 100% no-repeat;
+    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200"><g fill="black"><circle cx="60" cy="26" r="16"/><path d="M36 48h48v30c0 10-8 18-18 18H54c-9 0-18-8-18-18V48z"/><rect x="22" y="70" width="20" height="46" rx="10"/><rect x="78" y="70" width="20" height="46" rx="10"/><path d="M46 96h28v60H46z"/><path d="M46 156h20v40H46z"/><path d="M66 156h20v40H66z"/></g></svg>') center/80% 100% no-repeat;
+    border-radius: 18px;
+    box-shadow:
+      0 0 12px var(--holo-glow),
+      0 0 28px var(--holo-glow-2);
+    animation: holoFloat 6s ease-in-out infinite;
+  }
+
+  /* edge glow / chromatic fringe */
+  .holo .holo-edge{
+    position:absolute; inset:0;
+    background:
+      radial-gradient(120% 110% at 50% 40%,
+        transparent 45%,
+        hsla(var(--holo-a), 100%, 85%, .5) 65%,
+        transparent 80%) ;
+    mix-blend-mode: screen;
+    filter: blur(2.5px) saturate(1.2);
+    pointer-events:none;
+  }
+
+  /* scanlines + shimmer sweep */
+  .holo .holo-scan{
+    position:absolute; inset:0;
+    background:
+      repeating-linear-gradient( to bottom,
+        transparent 0 3px,
+        var(--holo-scan) 3px 4px),
+      linear-gradient( to bottom,
+        transparent 0%,
+        rgba(255,255,255,.05) 40%,
+        rgba(255,255,255,.12) 50%,
+        transparent 60%);
+    -webkit-mask: inherit; mask: inherit;
+    mix-blend-mode: screen;
+    animation: holoScan 4.8s linear infinite;
+  }
+
+  /* particles */
+  .holo .holo-particles{ position:absolute; inset:0; pointer-events:none; }
+  .holo .holo-particles span{
+    --sz: 3px; --x: 50%; --y: 50%; --t: 6s;
+    position:absolute; width:var(--sz); height:var(--sz); border-radius:50%;
+    background: var(--holo-line);
+    left: var(--x); top: var(--y);
+    filter: drop-shadow(0 0 6px var(--holo-line));
+    animation: floatDot var(--t) ease-in-out infinite;
+  }
+  /* sprinkle positions */
+  .holo .holo-particles span:nth-child(1){ --x:14%; --y:18%; --t:7s }
+  .holo .holo-particles span:nth-child(2){ --x:78%; --y:22%; --t:6.3s }
+  .holo .holo-particles span:nth-child(3){ --x:20%; --y:62%; --t:7.6s }
+  .holo .holo-particles span:nth-child(4){ --x:84%; --y:68%; --t:5.8s }
+  .holo .holo-particles span:nth-child(5){ --x:52%; --y:86%; --t:6.8s }
+  .holo .holo-particles span:nth-child(6){ --x:36%; --y:40%; --t:6.1s }
+  .holo .holo-particles span:nth-child(7){ --x:66%; --y:46%; --t:7.2s }
+  .holo .holo-particles span:nth-child(8){ --x:30%; --y:84%; --t:5.9s }
+  .holo .holo-particles span:nth-child(9){ --x:72%; --y:82%; --t:7.4s }
+  .holo .holo-particles span:nth-child(10){ --x:44%; --y:12%; --t:6.6s }
+
+  /* animations */
+  @keyframes holoPulse{ 0%,100%{transform:scale(.96);opacity:.85} 50%{transform:scale(1.03);opacity:1} }
+  @keyframes holoFloat{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-4px) } }
+  @keyframes holoScan{
+    0%{ background-position: 0 -120px, 0 -120px }
+    100%{ background-position: 0 160px, 0 160px }
+  }
+  @keyframes floatDot{
+    0%,100%{ transform: translateY(0) scale(1) ; opacity:.85}
+    50%{ transform: translateY(-6px) scale(1.15); opacity:1}
+  }
+
+  /* ===== Wireframe + Nodes layer (masked to the body) ===== */
+  .holo .holo-net{
+    position:absolute; inset:0; mix-blend-mode:screen; opacity:.95;
+    -webkit-mask: inherit; mask: inherit;
+    background:
+      /* base grid */
+      url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="white" stop-opacity="0.55"/><stop offset="100%" stop-color="white" stop-opacity="0.15"/></linearGradient></defs><g stroke="white" stroke-opacity="0.25" stroke-width="0.6"><!-- vertical lines --><path d="M10 0 V200 M30 0 V200 M50 0 V200 M70 0 V200 M90 0 V200 M110 0 V200 M130 0 V200 M150 0 V200 M170 0 V200 M190 0 V200"/><!-- horizontal lines --><path d="M0 10 H200 M0 30 H200 M0 50 H200 M0 70 H200 M0 90 H200 M0 110 H200 M0 130 H200 M0 150 H200 M0 170 H200 M0 190 H200"/><!-- diagonals --><g opacity="0.35"><path d="M-40 0 L200 240"/><path d="M-20 0 L220 240"/><path d="M0 0 L240 240"/><path d="M0 -40 L240 200"/><path d="M0 -20 L240 220"/></g></g><!-- nodes (small glowing points) --><g fill="white"><circle cx="22" cy="18" r="1.7"/><circle cx="58" cy="32" r="1.4"/><circle cx="96" cy="26" r="1.6"/><circle cx="142" cy="44" r="1.5"/><circle cx="176" cy="20" r="1.9"/><circle cx="34" cy="74" r="1.6"/><circle cx="86" cy="92" r="1.5"/><circle cx="126" cy="80" r="1.7"/><circle cx="164" cy="96" r="1.6"/><circle cx="52" cy="124" r="1.5"/><circle cx="96" cy="136" r="1.7"/><circle cx="144" cy="132" r="1.6"/><circle cx="70" cy="168" r="1.5"/><circle cx="118" cy="176" r="1.8"/></g></svg>') center/180px 180px repeat;
+
+    /* subtle parallax to keep it alive */
+    animation: netDrift 14s ease-in-out infinite;
+    filter: drop-shadow(0 0 6px hsla(var(--holo-a),95%,75%,.55));
+  }
+
+  /* vary opacity by zone for mood */
+  .oracle.holo[data-zone="Rest & Recharge"] .holo-net{ opacity:.90 }
+  .oracle.holo[data-zone="Health"] .holo-net{ opacity:.98 }
+  .oracle.holo[data-zone="Creative / Project Work"] .holo-net{ opacity:.95 }
+  .oracle.holo[data-zone="Review & Planning"] .holo-net{ opacity:.92 }
+
+  /* vertical "spine" core glow */
+  .holo .holo-core{
+    position:absolute; inset:6% 30%;
+    background:
+      radial-gradient(60% 100% at 50% 0%, hsla(var(--holo-a),95%,75%,.55), transparent 60%),
+      linear-gradient(180deg, hsla(var(--holo-a),95%,75%,.9), transparent 60%);
+    filter: blur(2px) saturate(1.1);
+    opacity:.85; mix-blend-mode:screen;
+    -webkit-mask: inherit; mask: inherit;
+    animation: corePulse 3.6s ease-in-out infinite;
+  }
+
+  /* gentle motion */
+  @keyframes netDrift{
+    0%{ background-position: 0 0 }
+    50%{ background-position: 12px -10px }
+    100%{ background-position: 0 0 }
+  }
+  @keyframes corePulse{
+    0%,100%{ opacity:.75; transform: translateY(0) }
+    50%{ opacity:1; transform: translateY(-2px) }
+  }
+
+  /* ===== Anatomical full-body silhouette (neutral athletic) ===== */
+  .holo .holo-body.anat{
+    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200"><!-- Head --><circle cx="60" cy="22" r="12" fill="black"/><!-- Neck --><rect x="54" y="34" width="12" height="8" rx="3" fill="black"/><!-- Torso + shoulders (curved) --><path fill="black" d="M30,55 C34,42 44,36 60,36 C76,36 86,42 90,55 L92,78 C92,96 80,110 60,110 C40,110 28,96 28,78 Z"/><!-- Arms (slight natural bend) --><path fill="black" d="M28,58 C23,70 24,84 28,94 C30,100 36,104 40,103 C43,102 44,98 42,95 C39,90 38,84 38,78 L38,60 C36,58 32,57 28,58 Z"/><path fill="black" d="M92,58 C97,70 96,84 92,94 C90,100 84,104 80,103 C77,102 76,98 78,95 C81,90 82,84 82,78 L82,60 C84,58 88,57 92,58 Z"/><!-- Pelvis --><path fill="black" d="M46,110 C46,118 50,124 60,124 C70,124 74,118 74,110 Z"/><!-- Left leg --><path fill="black" d="M50,124 C48,140 48,156 49,172 C49.5,180 48,188 46,196 L56,196 C58,188 59,180 59,172 C59,156 60,140 62,124 Z"/><!-- Right leg --><path fill="black" d="M70,124 C72,140 72,156 71,172 C70.5,180 72,188 74,196 L64,196 C62,188 61,180 61,172 C61,156 60,140 58,124 Z"/></svg>') center/80% 100% no-repeat;
+    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200"><circle cx="60" cy="22" r="12" fill="black"/><rect x="54" y="34" width="12" height="8" rx="3" fill="black"/><path fill="black" d="M30,55 C34,42 44,36 60,36 C76,36 86,42 90,55 L92,78 C92,96 80,110 60,110 C40,110 28,96 28,78 Z"/><path fill="black" d="M28,58 C23,70 24,84 28,94 C30,100 36,104 40,103 C43,102 44,98 42,95 C39,90 38,84 38,78 L38,60 C36,58 32,57 28,58 Z"/><path fill="black" d="M92,58 C97,70 96,84 92,94 C90,100 84,104 80,103 C77,102 76,98 78,95 C81,90 82,84 82,78 L82,60 C84,58 88,57 92,58 Z"/><path fill="black" d="M46,110 C46,118 50,124 60,124 C70,124 74,118 74,110 Z"/><path fill="black" d="M50,124 C48,140 48,156 49,172 C49.5,180 48,188 46,196 L56,196 C58,188 59,180 59,172 C59,156 60,140 62,124 Z"/><path fill="black" d="M70,124 C72,140 72,156 71,172 C70.5,180 72,188 74,196 L64,196 C62,188 61,180 61,172 C61,156 60,140 58,124 Z"/></svg>') center/80% 100% no-repeat;
+  }
+
+  /* Optional: a slimmer neutral variant—just toggle .slim instead of .anat */
+  .holo .holo-body.slim{
+    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200"><circle cx="60" cy="22" r="11" fill="black"/><rect x="55" y="33" width="10" height="7" rx="3" fill="black"/><path fill="black" d="M34,56 C38,44 46,38 60,38 C74,38 82,44 86,56 L88,78 C88,96 78,108 60,108 C42,108 32,96 32,78 Z"/><path fill="black" d="M32,59 C28,70 30,84 33,92 C35,97 39,100 42,99 C44,98 45,96 44,93 C42,89 40,83 40,77 L40,62 C38,60 35,59 32,59 Z"/><path fill="black" d="M88,59 C92,70 90,84 87,92 C85,97 81,100 78,99 C76,98 75,96 76,93 C78,89 80,83 80,77 L80,62 C82,60 85,59 88,59 Z"/><path fill="black" d="M48,108 C48,116 52,121 60,121 C68,121 72,116 72,108 Z"/><path fill="black" d="M52,121 C50,138 51,156 52,172 C52.5,180 51,188 49,196 L57,196 C59,188 60,180 60,172 C60,156 60,138 61,121 Z"/><path fill="black" d="M68,121 C70,138 69,156 68,172 C67.5,180 69,188 71,196 L63,196 C61,188 60,180 60,172 C60,156 60,138 59,121 Z"/></svg>') center/78% 100% no-repeat;
+    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200"><circle cx="60" cy="22" r="11" fill="black"/><rect x="55" y="33" width="10" height="7" rx="3" fill="black"/><path fill="black" d="M34,56 C38,44 46,38 60,38 C74,38 82,44 86,56 L88,78 C88,96 78,108 60,108 C42,108 32,96 32,78 Z"/><path fill="black" d="M32,59 C28,70 30,84 33,92 C35,97 39,100 42,99 C44,98 45,96 44,93 C42,89 40,83 40,77 L40,62 C38,60 35,59 32,59 Z"/><path fill="black" d="M88,59 C92,70 90,84 87,92 C85,97 81,100 78,99 C76,98 75,96 76,93 C78,89 80,83 80,77 L80,62 C82,60 85,59 88,59 Z"/><path fill="black" d="M48,108 C48,116 52,121 60,121 C68,121 72,116 72,108 Z"/><path fill="black" d="M52,121 C50,138 51,156 52,172 C52.5,180 51,188 49,196 L57,196 C59,188 60,180 60,172 C60,156 60,138 61,121 Z"/><path fill="black" d="M68,121 C70,138 69,156 68,172 C67.5,180 69,188 71,196 L63,196 C61,188 60,180 60,172 C60,156 60,138 59,121 Z"/></svg>') center/78% 100% no-repeat;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel" id="agendaPanel">
+      <div class="hd">
+        <button class="btn ghost mini" disabled>←</button>
+        <h2 id="dayTitle" style="margin:0 auto;">Saturday • Oct 11</h2>
+        <button class="btn ghost mini" disabled>→</button>
+      </div>
+      <div class="bd">
+        <div class="agenda-day" id="dayBox">
+          <!-- small header: left replaced by Focus string -->
+          <div class="agenda-day-hd" id="miniHd">
+            <div>Recovery Day</div>
+            <div class="date"></div>
+          </div>
+
+          <!-- Focus Zone loading bar -->
+          <div class="zonebar" id="zonebar">
+            <div class="zb-fill" id="zbFill"></div>
+            <div class="zb-dot" id="zbDot"></div>
+            <!-- segments + labels injected by JS -->
+          </div>
+
+          <!-- Area pill + all-day pills -->
+          <div class="area-row" id="areaRow">
+            <span class="area-pill" id="areaPill">Flex · 3:33 PM–7:30 PM</span>
+            <div class="allday-lane" id="alldayLane">
+              <!-- e.g., birthdays -->
+              <!-- <span class="allday-pill">Kris' Birthday</span> -->
+            </div>
+          </div>
+
+          <!-- Timed events list -->
+          <div class="agenda-list" id="agendaList"></div>
+
+          <!-- live horizontal 'now' line -->
+          <div class="now-indicator" id="nowLine"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Digital Twin (Oracle) Panel -->
+    <section class="panel" id="oraclePanel" style="margin-top:18px;">
+      <div class="hd">
+        <h2>Digital Twin</h2>
+        <div class="hint"><span id="oracleZoneHint">—</span></div>
+      </div>
+      <div class="bd">
+        <div class="oracle-wrap">
+          <div id="oracle" class="oracle holo" data-zone="Rest & Recharge" aria-label="Digital twin state">
+            <div class="holo-glow"></div>
+            <div class="holo-body anat"></div>
+
+            <!-- NEW: wireframe grid + nodes clipped to the body -->
+            <div class="holo-net"></div>
+
+            <!-- vertical core glow (spine-like) -->
+            <div class="holo-core"></div>
+
+            <!-- edge + scan + particles stay for hologram vibe -->
+            <div class="holo-edge"></div>
+            <div class="holo-scan"></div>
+            <div class="holo-particles">
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+        <div class="oracle-legend">
+          Mirrors your current Area (Rest &amp; Recharge, Health, Creative, etc.).
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script>
+  /* ---------- Utilities ---------- */
+  const fmtTime = d => new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(d);
+  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  /* ---------- Mock data (matches your screenshots) ---------- */
+  const SELECTED = startOfDay(new Date()); // today
+  const at = (h,m=0)=> new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), h, m);
+
+  const FOCUS = "Recovery Day";
+  const ALLDAY = []; // e.g., ["Kris' Birthday"]
+
+  const EVENTS = [
+    { title:"water plants",            start: at(7,30),                    color:"green" },
+    { title:"precor stretch circuit",  start: at(9,30),                    color:"blue"  },
+    { title:"grocery shop",            start: at(11,0), end: at(12,0),     color:"gray"  },
+    { title:"mom dinner",              start: at(19,30),                   color:"purple"},
+    { title:"sleep",                   start: at(23,15),                   color:"blue"  },
+  ];
+
+  /* Zone schedule for the loading bar (edit to taste) */
+  /* ---- Area color tokens ---- */
+const AREA_COLORS = {
+  administrative: 'rgba(255,217,90,.45)',      // yellow
+  prep:           'rgba(125,242,201,.45)',     // mint/green
+  review:         'rgba(255,176,90,.45)',      // orange
+  rest:           'rgba(179,138,255,.45)',     // violet
+  creative:       'rgba(255,122,122,.45)',     // red
+  health:         'rgba(110,168,254,.45)',     // blue
+  errands:        'rgba(217,198,163,.45)',     // tan / beige
+  social:         'rgba(90,200,250,.45)',      // light blue
+  flex:           'rgba(124,77,255,.45)',      // dark violet / purple
+};
+
+/* ---- Recovery Day layout (times on the SELECTED day) ---- */
+const ZONES = [
+  { label:"Health",                   start: at(0,0),  end: at(7,30), color: AREA_COLORS.health },
+  { label:"Flex",                     start: at(7,30),  end: at(9,30),   color: AREA_COLORS.prep },
+  { label:"Health",                   start: at(9,30),  end: at(11,0), color: AREA_COLORS.health },
+  { label:"Prep & Maintenance",       start: at(11,0),  end: at(14,0),  color: AREA_COLORS.flex }, // or errands
+  { label:"Administrative",           start: at(14,0),  end: at(18,0),  color: AREA_COLORS.administrative },
+  { label:"Social & Relationships",   start: at(18,0), end: at(21,0),  color: AREA_COLORS.social },
+  { label:"Rest & Recharge",          start: at(21,0),  end: at(23,0),  color: AREA_COLORS.rest },
+  { label:"Sleep",                    start: at(23,0), end: at(24,0),  color: AREA_COLORS.rest },
+];
+
+  /* ---------- Render Agenda rows ---------- */
+  const list = document.getElementById('agendaList');
+  EVENTS.sort((a,b)=>+a.start-+b.start).forEach(ev=>{
+    const row = document.createElement('div');
+    row.className = 'agenda-row';
+    row.dataset.start = ev.start.toISOString();
+    if (ev.end) row.dataset.end = ev.end.toISOString();
+
+    const startStr = fmtTime(ev.start);
+    const endStr = ev.end ? fmtTime(ev.end) : null;
+
+    row.innerHTML = `
+      <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
+      <div>
+        <div class="agenda-title">${ev.title}</div>
+        <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
+      </div>
+      <label class="chx" aria-label="Mark ${ev.title} done">
+        <span class="inner"></span>
+      </label>
+    `;
+
+    row.querySelector('.chx').addEventListener('click', ()=> row.classList.toggle('done'));
+    list.appendChild(row);
+  });
+
+  /* ---------- All-day pills ---------- */
+  const lane = document.getElementById('alldayLane');
+  ALLDAY.forEach(t=>{
+    const p = document.createElement('span');
+    p.className = 'allday-pill';
+    p.textContent = t;
+    lane.appendChild(p);
+  });
+
+  /* ---------- Focus pill / header ---------- */
+  document.querySelector('#miniHd > :first-child').textContent = FOCUS;
+  document.querySelector('#miniHd .date').textContent = ""; // keep right empty like your card
+  document.getElementById('dayTitle').textContent =
+    new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(SELECTED) +
+    " • " +
+    new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(SELECTED);
+
+  /* ---------- Focus Zone Loading Bar ---------- */
+  const zonebar = document.getElementById('zonebar');
+  const fillEl  = document.getElementById('zbFill');
+  const dotEl   = document.getElementById('zbDot');
+
+  const DAY_START = new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), 0,0,0);
+  const DAY_END   = new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), 24,0,0);
+  const totalMs   = DAY_END - DAY_START;
+
+  // draw segments + labels
+  ZONES.forEach(z=>{
+    const left  = ((z.start - DAY_START)/totalMs) * 100;
+    const width = ((z.end   - z.start)/totalMs) * 100;
+    const seg   = document.createElement('div');
+    seg.className = 'zb-seg'; seg.style.left = left+'%'; seg.style.width = width+'%';
+    seg.style.background = z.color || 'rgba(110,168,254,.35)';
+    const lab = document.createElement('div');
+    lab.className = 'zb-label'; lab.textContent = z.label;
+    if (width < 8) lab.style.display = 'none';
+    seg.appendChild(lab);
+    zonebar.appendChild(seg);
+  });
+
+  function updateZoneBar(now=new Date()){
+    const pct = Math.max(0, Math.min(1, (now - DAY_START)/totalMs)) * 100;
+    fillEl.style.width = pct + '%';
+    dotEl.style.left = pct + '%';
+  }
+
+  /* ---------- Live horizontal now line ---------- */
+  const nowLine = document.getElementById('nowLine');
+  function updateNowLine(){
+    const listEl = document.getElementById('agendaList');
+    const rows = Array.from(listEl.querySelectorAll('.agenda-row'));
+    const now = new Date();
+
+    const points = rows.map(r=>{
+      const s = new Date(r.dataset.start);
+      const e = r.dataset.end ? new Date(r.dataset.end) : null;
+      const rect = r.getBoundingClientRect();
+      const listTop = listEl.getBoundingClientRect().top + window.scrollY;
+      return { s, e, yTop:rect.top + window.scrollY - listTop, yBot:rect.bottom + window.scrollY - listTop };
+    });
+
+    let top;
+    if (!points.length){ top = 10; }
+    else{
+      let prev=null,next=null;
+      for (const p of points){ if (now < p.s){ next=p; break } prev=p; }
+      if (!prev){                                   // before first
+        const first = points[0];
+        const span  = (first.s - SELECTED)/60000 || 1;
+        const prog  = Math.max(0, Math.min(1, (now - SELECTED)/ (first.s-SELECTED)));
+        top = first.yTop * prog;
+      }else if (!next){                             // after last
+        const last = points[points.length-1];
+        const end  = last.e || last.s;
+        const tail = (24*60) - ((end.getHours()*60)+end.getMinutes());
+        const prog = Math.max(0, Math.min(1, (now - end)/(tail*60000)));
+        top = last.yBot + (listEl.scrollHeight - last.yBot) * prog;
+      }else{                                        // between two
+        const t0 = prev.e || prev.s, t1 = next.s;
+        const y0 = prev.yBot, y1 = next.yTop;
+        const prog = Math.max(0, Math.min(1, (now - t0)/(t1 - t0)));
+        top = y0 + (y1 - y0) * prog;
+      }
+    }
+    const dayTop = document.getElementById('dayBox').getBoundingClientRect().top + window.scrollY;
+    const listTop = listEl.getBoundingClientRect().top + window.scrollY;
+    nowLine.style.top = (listTop - dayTop + top) + 'px';
+  }
+
+  /* ---------- Digital Twin wiring ---------- */
+  function normalizeZone(area){
+    const m = {
+      "Rest & Recharge": "Rest & Recharge",
+      "Health": "Health",
+      "Creative / Project Work": "Creative / Project Work",
+      "Review & Planning": "Review & Planning",
+      "Errands & Logistics": "Errands & Logistics",
+      "Social & Relationships": "Social & Relationships",
+      "Flex": "Flex",
+      "Prep & Maintenance": "Review & Planning"
+    };
+    return m[area] || "Flex";
+  }
+
+  function setOracleZone(zone){
+    const el = document.getElementById('oracle');
+    const hint = document.getElementById('oracleZoneHint');
+    if (!el) return;
+    el.setAttribute('data-zone', zone);
+    if (hint) hint.textContent = zone;
+  }
+
+  function findCurrentArea(events, now) {
+    // Mock implementation - find which zone we're currently in
+    for (const zone of ZONES) {
+      if (now >= zone.start && now < zone.end) {
+        return { area: zone.label };
+      }
+    }
+    return null;
+  }
+
+  function findNextArea(events, now) {
+    // Mock implementation - find next zone
+    for (const zone of ZONES) {
+      if (now < zone.start) {
+        return { area: zone.label };
+      }
+    }
+    return null;
+  }
+
+  function updateOracleFromAgenda(){
+    const day = window.__CURRENT_DAY || { events: ZONES };
+    if (!day) return;
+    const now = new Date();
+    const current = findCurrentArea(day.events, now);
+    if (current){
+      setOracleZone(normalizeZone(current.area));
+      return;
+    }
+    const next = findNextArea(day.events, now);
+    setOracleZone(next ? "Flex" : "Flex");
+  }
+
+  function updateLiveArea() {
+    // Mock function to simulate existing functionality
+    updateOracleFromAgenda();
+  }
+
+  /* ---------- Boot + gentle timers ---------- */
+  function tick(){
+    updateZoneBar(new Date());
+    updateNowLine();
+    updateOracleFromAgenda(); // Update oracle on each tick
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    if (document.getElementById('oracle')){
+      updateOracleFromAgenda();
+    }
+  });
+
+  tick();
+  setInterval(tick, 60000);
+  window.addEventListener('resize', tick);
+  window.addEventListener('scroll', updateNowLine, {passive:true});
+
+  /* Optional: set the Area pill text to match your mock "Flex · 3:33 PM–7:30 PM" */
+  (function seedAreaPill(){
+  const p = document.getElementById('areaPill');
+  const seg = ZONES[0];
+  if (seg) p.textContent = seg.label; // just the zone name, no time
+})();
+</script>
+</body>
+</html>

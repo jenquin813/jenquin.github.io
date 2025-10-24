@@ -90,7 +90,7 @@
     border-radius:999px; overflow:hidden;
     background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
   }
-  .zb-seg{position:absolute; top:0; bottom:0; opacity:.22}
+  .zb-seg{position:absolute; top:0; bottom:0; opacity:.25}
   .zb-label{
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     font-size:11px; color:var(--muted); white-space:nowrap; pointer-events:none;
@@ -220,10 +220,11 @@ const AREA_COLORS = {
 
 /* ---- Recovery Day layout (times on the SELECTED day) ---- */
 const ZONES = [
-  { label:"Prep & Maintenance",       start: at(7,30),  end: at(8,0),   color: AREA_COLORS.prep },
+
+  { label:"Flex",                     start: at(7,30),  end: at(8,0),   color: AREA_COLORS.prep },
   { label:"Health",                   start: at(9,30),  end: at(10,15), color: AREA_COLORS.health },
-  { label:"Flex",                     start: at(11,0),  end: at(12,0),  color: AREA_COLORS.flex }, // or errands
-  { label:"Administrative",          start: at(14,0),  end: at(16,0),  color: AREA_COLORS.administrative },
+  { label:"Prep & Maintenance",       start: at(11,0),  end: at(12,0),  color: AREA_COLORS.flex }, // or errands
+  { label:"Administrative",           start: at(14,0),  end: at(16,0),  color: AREA_COLORS.administrative },
   { label:"Social & Relationships",   start: at(19,30), end: at(21,0),  color: AREA_COLORS.social },
   { label:"Rest & Recharge",          start: at(21,0),  end: at(23,0),  color: AREA_COLORS.rest },
   { label:"Sleep",                    start: at(23,15), end: at(24,0),  color: AREA_COLORS.rest },
@@ -356,10 +357,10 @@ const ZONES = [
 
   /* Optional: set the Area pill text to match your mock “Flex · 3:33 PM–7:30 PM” */
   (function seedAreaPill(){
-    const p = document.getElementById('areaPill');
-    const seg = ZONES[0];
-    if (seg) p.textContent = `${seg.label} · ${fmtTime(seg.start)}–${fmtTime(seg.end)}`;
-  })();
+  const p = document.getElementById('areaPill');
+  const seg = ZONES[0];
+  if (seg) p.textContent = seg.label; // just the zone name, no time
+})();
 </script>
 </body>
 </html>

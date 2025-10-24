@@ -6,3 +6,6 @@ git commit -m ""
 
 push the changes to the remote repository:
 git push origin master
+
+create a zip backup with a timestamp in the Backups folder:
+mkdir -p Backups && zip -r "Backups/jenquin-site-backup-$(date +%Y%m%d-%H%M%S).zip" . -x "*.git*" -x "Backups/*"
