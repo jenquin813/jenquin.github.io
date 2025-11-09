@@ -9,3 +9,19 @@ git push origin master
 
 create a zip backup with a timestamp in the Backups folder:
 mkdir -p Backups && zip -r "Backups/jenquin-site-backup-$(date +%Y%m%d-%H%M%S).zip" . -x "*.git*" -x "Backups/*"
+
+
+
+http://localhost:8080/sandbox_calendar_loading_bar.html
+
+
+file:///Volumes/storage/projects/Jenquin-site/sandbox_digital_twin_oracle.html
+
+
+#5) Local run + bookmark
+#Start server:
+cd /Volumes/storage/projects/Jenquin-site
+python3 -m http.server 8080
+
+Open + bookmark:
+http://localhost:8080/sandbox_calendar_loading_bar.html

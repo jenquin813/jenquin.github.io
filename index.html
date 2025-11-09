@@ -538,8 +538,8 @@
         <!-- Crash Plan (no footer) -->
         <section class="panel" id="crashPanel" style="margin-top:18px;">
           <div class="hd">
-            <h2>7-Day Crash Plan</h2>
-            <div class="hint" id="rangeHint">—</div>
+            <h2>Smart Planner</h2>
+            <div class="hint" id="rangeHint">Projects • Phases • Tasks</div>
           </div>
           <div class="bd">
             <div class="list" id="crashList"></div>
@@ -816,69 +816,65 @@
   return [
     {
       day: 1,
-      title: "Day 1 – Core Finances",
+      title: "Project — FlowOS",
       due: day(1),
       subtasks: [
-        "Gather last 3–6 months bank statements",
-        "Gather household bills (utilities, phone, internet, HOA, insurance)",
-        "Print/save mortgage statements & lender letters"
+        "Phase: Planner UI — build Project Title List",
+        "Phase: Sync — Reminders → export → normalize → map → render"
       ]
     },
     {
       day: 2,
-      title: "Day 2 – Ledger + Food Stamps",
+      title: "Project — Smart Planner Card",
       due: day(2),
       subtasks: [
-        "Finalize expense ledger (food, gas, health, debt)",
-        "Apply for food stamps (use bank statements + ledger as proof)"
+        "Phase: Structure — Projects → Phases → Tasks",
+        "Phase: Render — Accordion behavior"
       ]
     },
     {
       day: 3,
-      title: "Day 3 – Mom’s Medical Packet (Part 1)",
+      title: "Project — Dashboard Integration",
       due: day(3),
       subtasks: [
-        "Collect hospital/clinic records (copies/printouts)",
-        "Gather prescriptions + receipts"
+        "Phase: API — Connect live data sources",
+        "Phase: UI — Real-time updates and notifications"
       ]
     },
     {
       day: 4,
-      title: "Day 4 – Mom’s Medical Packet (Part 2)",
+      title: "Project — Mobile Optimization",
       due: day(4),
       subtasks: [
-        "Write daily function notes (3–5 days is enough)",
-        "Request doctor’s letter (or confirm appointment/availability)"
+        "Phase: Responsive — Tablet and phone layouts",
+        "Phase: Touch — Gesture controls and interactions"
       ]
     },
     {
       day: 5,
-      title: "Day 5 – Bankruptcy Packet (Part 1)",
+      title: "Project — Data Sync Engine",
       due: day(5),
       subtasks: [
-        "Gather credit card + loan statements",
-        "List creditors + balances",
-        "List assets (truck, tools, furniture, gear)"
+        "Phase: Export — Apple Reminders integration",
+        "Phase: Transform — Normalize data structures"
       ]
     },
     {
       day: 6,
-      title: "Day 6 – Bankruptcy Packet (Part 2)",
+      title: "Project — Performance Optimization",
       due: day(6),
       subtasks: [
-        "Review tax returns (last 2 years)",
-        "Align ledger with tax numbers (rough match is fine)",
-        "Organize everything into Shared Packet folder system"
+        "Phase: Speed — Lazy loading and caching",
+        "Phase: Memory — Efficient state management"
       ]
     },
     {
       day: 7,
-      title: "Day 7 – Compile & Review",
+      title: "Project — User Experience Polish",
       due: day(7),
       subtasks: [
-        "Assemble Disability packet (Mom) — submission ready",
-        "Assemble Bankruptcy packet — file-ready (hold unless needed)",
-        "Double-check folders, label clearly (“ready to send”)"
+        "Phase: Polish — Animations and micro-interactions",
+        "Phase: Testing — User acceptance and edge cases"
       ]
     }
   ];

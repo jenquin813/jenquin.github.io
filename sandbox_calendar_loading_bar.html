@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<!-- Reminders wiring patch: use local JSON, scheduled-only -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Agenda Card • Sandbox</title>
@@ -177,6 +178,11 @@
           <!-- Timed events list -->
           <div class="agenda-list" id="agendaList"></div>
 
+          <!-- Data status indicator -->
+          <div id="dataStatus" style="padding:8px 12px;font-size:11px;color:var(--muted);text-align:center;border-top:1px solid var(--border);">
+            Loading reminders...
+          </div>
+
           <!-- live horizontal 'now' line -->
           <div class="now-indicator" id="nowLine"></div>
         </div>
@@ -189,20 +195,58 @@
   const fmtTime = d => new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(d);
   const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-  /* ---------- Mock data (matches your screenshots) ---------- */
+  /* ---------- Day context ---------- */
   const SELECTED = startOfDay(new Date()); // today
   const at = (h,m=0)=> new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), h, m);
 
-  const FOCUS = "Recovery Day";
-  const ALLDAY = []; // e.g., ["Kris’ Birthday"]
+  /* ---------- Reminders (scheduled only) loader ---------- */
+  async function loadRemindersScheduled() {
+    const statusEl = document.getElementById('dataStatus');
+    if (statusEl) statusEl.textContent = 'Loading reminders...';
+    
+    // served locally; never pushed. See .gitignore (/data/)
+    const url = 'data/reminders.local.json?ts=' + Date.now();
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const { items = [], count = 0 } = data;
 
-  const EVENTS = [
-    { title:"water plants",            start: at(7,30),                    color:"green" },
-    { title:"precor stretch circuit",  start: at(9,30),                    color:"blue"  },
-    { title:"grocery shop",            start: at(11,0), end: at(12,0),     color:"gray"  },
-    { title:"mom dinner",              start: at(19,30),                   color:"purple"},
-    { title:"sleep",                   start: at(23,15),                   color:"blue"  },
-  ];
+      // Map Reminders → UI model: timed EVENTS + ALLDAY pills
+      const EVENTS = [];
+      const ALLDAY = [];
+      for (const it of items) {
+        if (!it?.dueISO) continue; // scheduled only
+        const d = new Date(it.dueISO);
+        const hasTime = !(d.getHours() === 0 && d.getMinutes() === 0);
+        if (hasTime) {
+          EVENTS.push({
+            title: it.title,
+            start: d,
+            color: it.priority === 1 ? 'purple' : it.flagged ? 'blue' : 'green'
+          });
+        } else {
+          // scheduled all-day item
+          ALLDAY.push(it.title);
+        }
+      }
+      // expose
+      window.__REM_EVENTS = EVENTS.sort((a,b)=>+a.start-+b.start);
+      window.__REM_ALLDAY = ALLDAY;
+      
+      // Update status
+      if (statusEl) {
+        statusEl.textContent = `✅ Loaded ${count} reminders (${EVENTS.length} timed, ${ALLDAY.length} all-day)`;
+      }
+    } catch (err) {
+      console.warn('Reminders fetch failed:', err);
+      window.__REM_EVENTS = [];
+      window.__REM_ALLDAY = ['Reminders unavailable'];
+      if (statusEl) {
+        statusEl.textContent = `❌ Failed to load reminders: ${err.message}`;
+      }
+    }
+  }
 
   /* Zone schedule for the loading bar (edit to taste) */
   /* ---- Area color tokens ---- */
@@ -230,44 +274,50 @@ const ZONES = [
   { label:"Sleep",                    start: at(23,0), end: at(24,0),  color: AREA_COLORS.rest },
 ];
 
-  /* ---------- Render Agenda rows ---------- */
-  const list = document.getElementById('agendaList');
-  EVENTS.sort((a,b)=>+a.start-+b.start).forEach(ev=>{
-    const row = document.createElement('div');
-    row.className = 'agenda-row';
-    row.dataset.start = ev.start.toISOString();
-    if (ev.end) row.dataset.end = ev.end.toISOString();
+  /* ---------- Hydrate UI from Reminders ---------- */
+  async function hydrateCalendarFromReminders() {
+    // load scheduled reminders
+    await loadRemindersScheduled();
 
-    const startStr = fmtTime(ev.start);
-    const endStr = ev.end ? fmtTime(ev.end) : null;
+    // 1) All-day lane
+    const lane = document.getElementById('alldayLane');
+    lane.innerHTML = '';
+    (window.__REM_ALLDAY || []).forEach(t=>{
+      const p = document.createElement('span');
+      p.className = 'allday-pill';
+      p.textContent = t;
+      lane.appendChild(p);
+    });
 
-    row.innerHTML = `
-      <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
-      <div>
-        <div class="agenda-title">${ev.title}</div>
-        <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
-      </div>
-      <label class="chx" aria-label="Mark ${ev.title} done">
-        <span class="inner"></span>
-      </label>
-    `;
+    // 2) Timed events list
+    const list = document.getElementById('agendaList');
+    list.innerHTML = '';
+    (window.__REM_EVENTS || []).forEach(ev=>{
+      const row = document.createElement('div');
+      row.className = 'agenda-row';
+      row.dataset.start = ev.start.toISOString();
+      const startStr = fmtTime(ev.start);
+      row.innerHTML = `
+        <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
+        <div>
+          <div class="agenda-title">${ev.title}</div>
+          <div class="agenda-meta">${startStr}</div>
+        </div>
+        <label class="chx"><span class="inner"></span></label>
+      `;
+      row.querySelector('.chx').addEventListener('click', ()=> row.classList.toggle('done'));
+      list.appendChild(row);
+    });
 
-    row.querySelector('.chx').addEventListener('click', ()=> row.classList.toggle('done'));
-    list.appendChild(row);
-  });
-
-  /* ---------- All-day pills ---------- */
-  const lane = document.getElementById('alldayLane');
-  ALLDAY.forEach(t=>{
-    const p = document.createElement('span');
-    p.className = 'allday-pill';
-    p.textContent = t;
-    lane.appendChild(p);
-  });
+    // 3) refresh dynamics
+    if (typeof updateNowLine === 'function') updateNowLine();
+    if (typeof updateZoneBar === 'function') updateZoneBar(new Date());
+  }
 
   /* ---------- Focus pill / header ---------- */
+  const FOCUS = "Today";
   document.querySelector('#miniHd > :first-child').textContent = FOCUS;
-  document.querySelector('#miniHd .date').textContent = ""; // keep right empty like your card
+  document.querySelector('#miniHd .date').textContent = "";
   document.getElementById('dayTitle').textContent =
     new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(SELECTED) +
     " • " +
@@ -345,22 +395,29 @@ const ZONES = [
     nowLine.style.top = (listTop - dayTop + top) + 'px';
   }
 
-  /* ---------- Boot + gentle timers ---------- */
+  /* ---------- Boot + timers ---------- */
   function tick(){
     updateZoneBar(new Date());
     updateNowLine();
   }
-  tick();
-  setInterval(tick, 60000);
+
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    await hydrateCalendarFromReminders(); // initial render from Reminders
+    tick();
+  });
+
+  // refresh UI every minute; refresh data every 10 minutes
+  setInterval(tick, 60 * 1000);
+  setInterval(hydrateCalendarFromReminders, 10 * 60 * 1000);
   window.addEventListener('resize', tick);
   window.addEventListener('scroll', updateNowLine, {passive:true});
 
-  /* Optional: set the Area pill text to match your mock “Flex · 3:33 PM–7:30 PM” */
+  /* Optional: set the Area pill text to match your mock "Flex · 3:33 PM–7:30 PM" */
   (function seedAreaPill(){
-  const p = document.getElementById('areaPill');
-  const seg = ZONES[0];
-  if (seg) p.textContent = seg.label; // just the zone name, no time
-})();
+    const p = document.getElementById('areaPill');
+    const seg = ZONES[0];
+    if (seg) p.textContent = seg.label; // just the zone name, no time
+  })();
 </script>
 </body>
 </html>
