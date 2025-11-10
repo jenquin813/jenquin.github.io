@@ -96,13 +96,25 @@ The goal is to make technology feel *invisible but intelligent* — helping peop
 - *(Optional future frameworks: React, Vue, or Svelte)*
 
 ## 🚀 Getting Started
-To preview locally:
+
+### Local Development Server (Recommended)
+For full functionality including data fetching:
 ```bash
 git clone https://github.com/<yourusername>/jenquin-site.git
 cd jenquin-site
+python3 -m http.server 8080
+```
+Then open: **http://localhost:8080** and bookmark as "Jenquin Local App"
+
+### File Preview (Basic)
+For quick preview without server features:
+```bash
+cd jenquin-site
 open index.html
 ```
-Or view live on GitHub Pages (after enabling it in repo settings).
+
+### Live Site
+View on GitHub Pages: https://jenquin813.github.io/jenquin.github.io/
 
 ## 🖼️ Showcase / Screenshots (placeholder)
 - `docs/screenshots/` folder for UI previews and GIFs (add when ready).

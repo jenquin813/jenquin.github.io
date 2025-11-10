@@ -1,27 +1,44 @@
-add the modified files:
-git add 
+# Jenquin Site - Common Commands
 
-commit the changes:
-git commit -m ""
-
-push the changes to the remote repository:
-git push origin master
-
-create a zip backup with a timestamp in the Backups folder:
-mkdir -p Backups && zip -r "Backups/jenquin-site-backup-$(date +%Y%m%d-%H%M%S).zip" . -x "*.git*" -x "Backups/*"
-
-
-
-http://localhost:8080/sandbox_calendar_loading_bar.html
-
-
-file:///Volumes/storage/projects/Jenquin-site/sandbox_digital_twin_oracle.html
-
-
-#5) Local run + bookmark
-#Start server:
+## 🌐 LOCAL DEVELOPMENT (MAIN APP)
+Start HTTP Server:
 cd /Volumes/storage/projects/Jenquin-site
 python3 -m http.server 8080
 
-Open + bookmark:
-http://localhost:8080/sandbox_calendar_loading_bar.html
+Main App URLs:
+- http://localhost:8080                 (Jenquin Local App - BOOKMARK THIS)
+- http://localhost:8080/index.html      (Main dashboard)
+- http://localhost:8080/index.html?demo=1   (Demo mode)
+- http://localhost:8080/demo.html       (Demo redirect)
+
+## 🧪 SANDBOX DEVELOPMENT
+Sandbox URLs (same server):
+- http://localhost:8080/sandbox_calendar_loading_bar.html
+- http://localhost:8080/sandbox_digital_twin_oracle.html
+
+## 📁 DATA MANAGEMENT
+Generate reminders data:
+./scripts/pull_reminders_local.sh
+
+Kill server process:
+lsof -ti:8080 | xargs kill
+
+## 📦 GIT OPERATIONS
+Add modified files:
+git add .
+
+Commit changes:
+git commit -m "your commit message"
+
+Push to remote:
+git push origin master
+
+## 💾 BACKUP
+Create timestamped backup:
+mkdir -p Backups && zip -r "Backups/jenquin-site-backup-$(date +%Y%m%d-%H%M%S).zip" . -x "*.git*" -x "Backups/*"
+
+## 🔍 VERIFICATION
+Check server status:
+lsof -i:8080                            (Show server process)
+curl -I http://localhost:8080/index.html    (Test HTTP headers)
+ps aux | grep "python3.*http.server"       (Find server processes)
