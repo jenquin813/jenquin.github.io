@@ -1,15 +1,15 @@
 #!/bin/bash
 # pull_reminders_local.sh
-# Converts LifeOrganizer CSV reminders to JSON for Jenquin-site calendar
+# Modular data pipeline: Nova Scheduling CSV → Multiple JSON Views
 
 set -e
 
 # Paths
 SOURCE_DIR="/Volumes/storage/projects/LifeOrganizer/life_organizer/modules/organized_reminders/data/nova_scheduling"
-OUTPUT_FILE="/Volumes/storage/projects/Jenquin-site/data/reminders.local.json"
-TEMP_FILE="/tmp/reminders_processing.json"
+DATA_DIR="/Volumes/storage/projects/Jenquin-site/data"
+SCRIPTS_DIR="/Volumes/storage/projects/Jenquin-site/scripts"
 
-echo "🔄 Pulling reminders from LifeOrganizer..."
+echo "🔄 Building reminders views from Nova Scheduling..."
 
 # Find the newest CSV file
 NEWEST_CSV=$(find "$SOURCE_DIR" -name "*.csv" -type f | sort | tail -1)
@@ -21,104 +21,39 @@ fi
 
 echo "📄 Processing: $(basename "$NEWEST_CSV")"
 
-# Create temp directory for processing
-mkdir -p "$(dirname "$TEMP_FILE")"
+# Ensure data directory exists
+mkdir -p "$DATA_DIR"
 
-# Convert CSV to JSON using Python
-export NEWEST_CSV
-export TEMP_FILE
-python3 << EOF
-import csv
-import json
-import sys
-from datetime import datetime
-import os
+# Copy source CSV for reference
+cp "$NEWEST_CSV" "$DATA_DIR/nova_scheduling.csv"
+echo "📋 Copied source CSV to data/nova_scheduling.csv"
 
-source_file = os.environ['NEWEST_CSV']
-temp_file = os.environ['TEMP_FILE']
+# Build all views
+echo ""
+echo "🏗️ Building views..."
 
-items = []
-count = 0
-valid_count = 0
+# Daily View (Today's Agenda Card)
+python3 "$SCRIPTS_DIR/build_daily_view.py" "$NEWEST_CSV" "$DATA_DIR/daily.json"
 
-try:
-    with open(source_file, 'r', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        
-        for row in reader:
-            count += 1
-            
-            # Skip completed items
-            if row.get('completed', '').lower() in ['yes', 'true', '1']:
-                continue
-                
-            # Skip items with invalid due dates
-            due_str = row.get('due', '').strip()
-            if not due_str or 'Error:' in due_str or due_str == 'No':
-                continue
-                
-            try:
-                # Parse the due date
-                due_dt = datetime.strptime(due_str, '%Y-%m-%d %H:%M:%S')
-                due_iso = due_dt.isoformat()
-                
-                # Convert to expected format
-                item = {
-                    'title': row.get('title', 'Untitled').strip(),
-                    'dueISO': due_iso,
-                    'list': row.get('list', 'Default').strip(),
-                    'flagged': False,  # CSV doesn't have flagged field
-                    'priority': 0,     # CSV doesn't have priority field
-                    'id': row.get('id', '').strip()
-                }
-                
-                items.append(item)
-                valid_count += 1
-                
-            except ValueError:
-                # Skip items with unparseable dates
-                continue
-    
-    # Sort by due date
-    items.sort(key=lambda x: x['dueISO'])
-    
-    # Create output structure
-    output = {
-        'items': items,
-        'count': valid_count,
-        'total_processed': count,
-        'exported_at': datetime.now().isoformat(),
-        'source_file': os.path.basename(source_file)
-    }
-    
-    # Write to temp file
-    with open(temp_file, 'w', encoding='utf-8') as outfile:
-        json.dump(output, outfile, indent=2, ensure_ascii=False)
-    
-    print(f"✅ Processed {count} total rows, found {valid_count} valid scheduled reminders")
+# Backlog View (Overdue/Undated/Future)
+python3 "$SCRIPTS_DIR/build_backlog_view.py" "$NEWEST_CSV" "$DATA_DIR/backlog.json"
 
-except Exception as e:
-    print(f"❌ Error processing CSV: {e}")
-    sys.exit(1)
-EOF
+# Projects View (Smart Planner Card)  
+python3 "$SCRIPTS_DIR/build_project_view.py" "$NEWEST_CSV" "$DATA_DIR/projects.json"
 
-# Check if Python processing succeeded
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to process CSV data"
-    exit 1
-fi
-
-# Ensure output directory exists
-mkdir -p "$(dirname "$OUTPUT_FILE")"
-
-# Move temp file to final location
-mv "$TEMP_FILE" "$OUTPUT_FILE"
-
-echo "📄 Output written to: $OUTPUT_FILE"
-echo "🔍 Preview:"
-head -20 "$OUTPUT_FILE"
+# Week View (Next 7 Days)
+python3 "$SCRIPTS_DIR/build_week_view.py" "$NEWEST_CSV" "$DATA_DIR/week.json"
 
 echo ""
-echo "✅ Reminders pull complete!"
+echo "📊 DATA FILES GENERATED:"
+echo "├── nova_scheduling.csv  (source data)"
+echo "├── daily.json          (today's agenda)" 
+echo "├── backlog.json        (overdue/undated/future)"
+echo "├── projects.json       (Smart Planner)"
+echo "└── week.json           (next 7 days)"
+
+echo ""
+echo "✅ Pipeline complete!"
 echo "💡 Usage: python3 -m http.server 8080 from Jenquin-site root"
-echo "🌐 Then open: http://localhost:8080/sandbox_calendar_agenda_card.html"
+echo "🌐 Jenquin App: http://localhost:8080"
+echo "🧪 Calendar Test: http://localhost:8080/sandbox_calendar_loading_bar.html"

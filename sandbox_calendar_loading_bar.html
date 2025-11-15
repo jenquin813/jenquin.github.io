@@ -204,8 +204,8 @@
     const statusEl = document.getElementById('dataStatus');
     if (statusEl) statusEl.textContent = 'Loading reminders...';
     
-    // served locally; never pushed. See .gitignore (/data/)
-    const url = 'data/reminders.local.json?ts=' + Date.now();
+    // Use our daily.json from the modular pipeline (live Nova Scheduling data)
+    const url = 'data/daily.json?ts=' + Date.now();
     try {
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -236,7 +236,7 @@
       
       // Update status
       if (statusEl) {
-        statusEl.textContent = `✅ Loaded ${count} reminders (${EVENTS.length} timed, ${ALLDAY.length} all-day)`;
+        statusEl.textContent = `✅ Loaded ${count} live reminders (${EVENTS.length} timed, ${ALLDAY.length} all-day)`;
       }
     } catch (err) {
       console.warn('Reminders fetch failed:', err);
