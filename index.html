@@ -211,7 +211,12 @@
         color: var(--muted);       /* still use muted tone in light mode */
       }
     }
-    .agenda-list{ display:flex; flex-direction:column }
+    .agenda-list{
+      display:flex;
+      flex-direction:column;
+      position: relative;   /* so nowLine math is consistent */
+      overflow-y: auto;
+    }
     .agenda-row{
       display:grid; grid-template-columns: 20px 1fr auto; align-items:center;
       gap:10px; padding:10px 12px; border-top:1px solid var(--border);
@@ -345,6 +350,60 @@
         background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(0,0,0,.02));
       }
     }
+
+    /* ==== Focus Zone Loading Bar (from sandbox) ==== */
+    .zonebar{
+      position:relative; height:26px; margin:10px 12px 0; border:1px solid var(--border);
+      border-radius:999px; overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(0,0,0,.05));
+    }
+    .zb-seg{position:absolute; top:0; bottom:0; opacity:.28}
+    .zb-label{
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      font-size:11px; color:var(--muted); white-space:nowrap; pointer-events:none;
+      text-shadow:0 1px 0 rgba(0,0,0,.35);
+    }
+    .zb-fill{position:absolute; inset:0 auto 0 0; width:0%;
+      background:linear-gradient(90deg, rgba(255,255,255,.10), rgba(255,255,255,.03));}
+    .zb-dot{
+      position:absolute; top:50%; transform:translate(-50%,-50%);
+      width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.9);
+      box-shadow:0 0 8px rgba(255,255,255,.45); left:0%;
+    }
+
+    /* Constrain agenda card to align calendar/timer with left column */
+    #agendaPanel .bd {
+      height: 480px; /* Optimized height for better column alignment */
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    /* Dynamic agenda day container */
+    #dayBox {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    /* Fixed header and loading bar */
+    .agenda-day-hd, .zonebar, .area-row {
+      flex-shrink: 0; /* Don't shrink these elements */
+    }
+    
+    /* Scrollable task list */
+    #agendaList {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    #agendaList::-webkit-scrollbar{width:6px;}
+    #agendaList::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.1);
+      border-radius: 999px;
+    }
+    
 
     footer{
       margin-top: 24px; color: var(--muted); font-size:12px; text-align:center;
@@ -547,7 +606,7 @@
         </section>
       </div>
 
-      <!-- Right column: Agenda (Apple-style) -->
+      <!-- Right column: Dynamic Agenda Card -->
       <section class="panel" id="agendaPanel">
         <div class="hd" id="flowHd">
           <button class="btn ghost mini" id="dayPrev" aria-label="Previous day">←</button>
@@ -555,7 +614,34 @@
           <button class="btn ghost mini" id="dayNext" aria-label="Next day">→</button>
         </div>
         <div class="bd">
-          <div id="agenda"></div>
+          <div class="agenda-day" id="dayBox">
+            <!-- Dynamic header: Focus banner -->
+            <div class="agenda-day-hd" id="miniHd">
+              <div>Today</div>
+              <div class="date"></div>
+            </div>
+
+            <!-- Focus Zone loading bar -->
+            <div class="zonebar" id="zonebar">
+              <div class="zb-fill" id="zbFill"></div>
+              <div class="zb-dot" id="zbDot"></div>
+              <!-- segments + labels injected by JS -->
+            </div>
+
+            <!-- Area pill + all-day pills -->
+            <div class="area-row" id="areaRow">
+              <span class="area-pill" id="areaPill">Flex</span>
+              <div class="allday-lane" id="alldayLane">
+                <!-- e.g., birthdays -->
+              </div>
+            </div>
+
+            <!-- Timed events list (scrollable) -->
+            <div class="agenda-list" id="agendaList"></div>
+
+            <!-- live horizontal 'now' line -->
+            <div class="now-indicator" id="nowLine"></div>
+          </div>
         </div>
         <div class="ft">
           <div class="mini-row">
@@ -904,15 +990,116 @@
       }];
     }
 
-    // ------------ Live fetch helpers (wire these to your API later)
+    // ------------ Live fetch helpers + Live Agenda Data
     async function apiGet(path){
       if(path==="/top3") return mockTop3();
       if(path==="/crash7") return mockCrash();
-      if(path==="/agenda") return mockAgenda();
+      if(path==="/agenda") return await loadLiveAgenda();
       return [];
     }
     async function apiPost(path, payload){
       return { ok:true };
+    }
+
+    // Load live agenda from daily.json pipeline
+    async function loadLiveAgenda() {
+      if (DEMO) return mockAgenda(SELECTED);
+      
+      // Status logging removed - no more debug footer
+      
+      // Use data/daily.json from the modular pipeline (live Nova Scheduling data)
+      const url = 'data/daily.json?ts=' + Date.now();
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const { items = [], count = 0 } = data;
+
+        // Map Reminders → UI model: timed EVENTS + ALLDAY pills
+        const EVENTS = [];
+        const ALLDAY = [];
+        const today = startOfDay(new Date());
+        
+        for (const it of items) {
+          if (!it?.dueISO) continue; // scheduled only
+          const d = new Date(it.dueISO);
+          const hasTime = !(d.getHours() === 0 && d.getMinutes() === 0);
+          if (hasTime) {
+            // Check if this item is from yesterday
+            const itemDate = startOfDay(d);
+            const isYesterday = +itemDate < +today;
+            
+            EVENTS.push({
+              title: it.title,
+              start: d,
+              color: it.priority === 1 ? 'purple' : it.flagged ? 'blue' : 'green',
+              isYesterday: isYesterday
+            });
+          } else {
+            // scheduled all-day item
+            ALLDAY.push(it.title);
+          }
+        }
+        
+        // expose for rendering
+        window.__REM_EVENTS = EVENTS.sort((a,b)=>+a.start-+b.start);
+        window.__REM_ALLDAY = ALLDAY;
+        
+        // Status updates removed
+
+        // Return agenda structure compatible with existing renderAgenda
+        const d0 = startOfDay(SELECTED);
+        const weekday = new Intl.DateTimeFormat(undefined, { weekday:'long' }).format(d0);
+        
+        return [{
+          label: weekday,
+          date: d0,
+          focus: "Today",
+          allDay: ALLDAY.map(title => ({ title })),
+          events: EVENTS.map(ev => ({
+            title: ev.title,
+            start: ev.start,
+            color: ev.color,
+            isYesterday: ev.isYesterday
+          }))
+        }];
+        
+      } catch (err) {
+        console.warn('Daily reminders fetch failed:', err);
+        window.__REM_EVENTS = [];
+        window.__REM_ALLDAY = ['Reminders unavailable'];
+        // Error status updates removed
+        return mockAgenda(SELECTED); // fallback
+      }
+    }
+
+    /* Zone schedule for the loading bar (edit to taste) */
+    /* ---- Area color tokens ---- */
+    const AREA_COLORS = {
+      administrative: 'rgba(255,217,90,.45)',      // yellow
+      prep:           'rgba(125,242,201,.45)',     // mint/green
+      review:         'rgba(255,176,90,.45)',      // orange
+      rest:           'rgba(179,138,255,.45)',     // violet
+      creative:       'rgba(255,122,122,.45)',     // red
+      health:         'rgba(110,168,254,.45)',     // blue
+      errands:        'rgba(217,198,163,.45)',     // tan / beige
+      social:         'rgba(90,200,250,.45)',      // light blue
+      flex:           'rgba(124,77,255,.45)',      // dark violet / purple
+    };
+
+    /* ---- Zone layout (times for the selected day) ---- */
+    function getZones() {
+      const at = (h,m=0)=> new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), h, m);
+      return [
+        { label:"Health",                   start: at(0,0),  end: at(7,30), color: AREA_COLORS.health },
+        { label:"Flex",                     start: at(7,30),  end: at(9,30),   color: AREA_COLORS.prep },
+        { label:"Health",                   start: at(9,30),  end: at(11,0), color: AREA_COLORS.health },
+        { label:"Prep & Maintenance",       start: at(11,0),  end: at(14,0),  color: AREA_COLORS.flex },
+        { label:"Administrative",           start: at(14,0),  end: at(18,0),  color: AREA_COLORS.administrative },
+        { label:"Social & Relationships",   start: at(18,0), end: at(21,0),  color: AREA_COLORS.social },
+        { label:"Rest & Recharge",          start: at(21,0),  end: at(23,0),  color: AREA_COLORS.rest },
+        { label:"Sleep",                    start: at(23,0), end: at(24,0),  color: AREA_COLORS.rest },
+      ];
     }
 
     // ------------ Renderers
@@ -1020,40 +1207,49 @@
     }
     
     function renderAgenda(days){
-      const wrap = document.getElementById('agenda');
-      wrap.innerHTML = "";
+      // Update dynamic elements in existing structure
+      const miniHd = document.getElementById('miniHd');
+      const alldayLane = document.getElementById('alldayLane');
+      const agendaList = document.getElementById('agendaList');
+      
+      if (!days || !days[0]) return;
+      const day = days[0];
 
-      days.forEach(day=>{
-        const box = document.createElement('div');
-        box.className = 'agenda-day';
-
-        // ---- Header (Focus banner)
-        const hd = document.createElement('div');
-        hd.className = 'agenda-day-hd';
+      // 1) Update header (Focus banner)
+      if (miniHd) {
         const dow = new Intl.DateTimeFormat(undefined, { weekday:'long'}).format(day.date);
         const mdy = new Intl.DateTimeFormat(undefined, { month:'short', day:'numeric' }).format(day.date);
-        hd.innerHTML = `<div>${escapeHtml(day.label)}</div><div class="date">${dow}, ${mdy}</div>`;
-        box.appendChild(hd);
+        const focus = day.focus || "Today";
+        miniHd.innerHTML = `<div>${escapeHtml(focus)}</div><div class="date">${dow}, ${mdy}</div>`;
+      }
 
-        // Replace left header text with focus (if present)
-        // use ONLY the explicit focus
-        const focus = day.focus || null;
-        if (focus){
-          hd.firstElementChild.textContent = focus;
-          const right = hd.querySelector('.date');
-          if (right) right.textContent = "";
-        }
+      // 2) Update all-day lane
+      if (alldayLane) {
+        alldayLane.innerHTML = '';
+        (day.allDay || []).forEach(item => {
+          if (item && item.title) {
+            const p = document.createElement('span');
+            p.className = 'allday-pill';
+            p.textContent = item.title;
+            alldayLane.appendChild(p);
+          }
+        });
+      }
 
-        // Add the area row with all-day items
-        renderAreaRow(day, box);
-
-        // ---- Timed events (sorted)
-        const list = document.createElement('div');
-        list.className = 'agenda-list';
+      // 3) Update timed events list with yesterday labels
+      if (agendaList) {
+        agendaList.innerHTML = '';
+        const today = startOfDay(new Date());
+        
         (day.events||[]).sort((a,b)=> +new Date(a.start) - +new Date(b.start));
         (day.events||[]).forEach(ev=>{
           const startStr = fmtTime(new Date(ev.start));
           const endStr   = ev.end ? fmtTime(new Date(ev.end)) : null;
+
+          // Check if this item is from yesterday
+          const itemDate = startOfDay(new Date(ev.start));
+          const isYesterday = +itemDate < +today;
+          const dayLabel = isYesterday ? ' <span style="color:var(--muted);font-size:10px;">(yesterday)</span>' : '';
 
           const row = document.createElement('div');
           row.className = 'agenda-row';
@@ -1063,7 +1259,7 @@
           row.innerHTML = `
             <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
             <div>
-              <div class="agenda-title">${escapeHtml(ev.title)}</div>
+              <div class="agenda-title">${escapeHtml(ev.title)}${dayLabel}</div>
               <div class="agenda-meta">${endStr ? `${startStr}–${endStr}` : startStr}</div>
             </div>
             <label class="chx" aria-label="Mark ${escapeHtml(ev.title)} done">
@@ -1083,12 +1279,72 @@
             setAgendaDone(m);
           });
 
-          list.appendChild(row);
+          agendaList.appendChild(row);
         });
-        box.appendChild(list);
+      }
 
-        wrap.appendChild(box);
+      // 4) Initialize/Update Zone Loading Bar
+      initializeZoneBar();
+      
+      // 5) Initialize now line positioning
+      setTimeout(() => {
+        updateNowLine();
+      }, 200);
+    }
+
+    // Zone Loading Bar Functions
+    function initializeZoneBar() {
+      const zonebar = document.getElementById('zonebar');
+      const fillEl = document.getElementById('zbFill');
+      const dotEl = document.getElementById('zbDot');
+      
+      if (!zonebar || !fillEl || !dotEl) return;
+
+      // Clear existing segments
+      zonebar.querySelectorAll('.zb-seg').forEach(seg => seg.remove());
+
+      const DAY_START = new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), 0,0,0);
+      const DAY_END = new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), 24,0,0);
+      const totalMs = DAY_END - DAY_START;
+
+      // Draw segments + labels
+      const zones = getZones();
+      zones.forEach(z => {
+        const left = ((z.start - DAY_START)/totalMs) * 100;
+        const width = ((z.end - z.start)/totalMs) * 100;
+        const seg = document.createElement('div');
+        seg.className = 'zb-seg';
+        seg.style.left = left+'%';
+        seg.style.width = width+'%';
+        seg.style.background = z.color || 'rgba(110,168,254,.35)';
+        
+        const lab = document.createElement('div');
+        lab.className = 'zb-label';
+        lab.textContent = z.label;
+        if (width < 8) lab.style.display = 'none';
+        seg.appendChild(lab);
+        
+        // Insert before fill and dot elements
+        zonebar.insertBefore(seg, fillEl);
       });
+
+      // Initial update
+      updateZoneBar();
+    }
+
+    function updateZoneBar(now = new Date()) {
+      const fillEl = document.getElementById('zbFill');
+      const dotEl = document.getElementById('zbDot');
+      
+      if (!fillEl || !dotEl) return;
+
+      const DAY_START = new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), 0,0,0);
+      const DAY_END = new Date(SELECTED.getFullYear(), SELECTED.getMonth(), SELECTED.getDate(), 24,0,0);
+      const totalMs = DAY_END - DAY_START;
+      
+      const pct = Math.max(0, Math.min(1, (now - DAY_START)/totalMs)) * 100;
+      fillEl.style.width = pct + '%';
+      dotEl.style.left = pct + '%';
     }
 
     function ensureNowIndicator(dayBox){
@@ -1183,19 +1439,91 @@
       indicator.style.top = (listBoxTop - dayTop + topPx) + 'px';
     }
 
+    // Update live horizontal now line - exact sandbox implementation
+    function updateNowLine(){
+      const listEl = document.getElementById('agendaList');
+      const nowLine = document.getElementById('nowLine');
+      const dayBox = document.getElementById('dayBox');
+      
+      if (!nowLine || !listEl || !dayBox) return;
+
+      const rows = Array.from(listEl.querySelectorAll('.agenda-row'));
+      const now = new Date();
+
+      const points = rows.map(r=>{
+        const s = new Date(r.dataset.start);
+        const e = r.dataset.end ? new Date(r.dataset.end) : null;
+        const rect = r.getBoundingClientRect();
+        const listTop = listEl.getBoundingClientRect().top + window.scrollY;
+        return { s, e, yTop:rect.top + window.scrollY - listTop, yBot:rect.bottom + window.scrollY - listTop };
+      });
+
+      let top;
+      if (!points.length){ top = 10; }
+      else{
+        let prev=null,next=null;
+        for (const p of points){ if (now < p.s){ next=p; break } prev=p; }
+        if (!prev){                                   // before first
+          const first = points[0];
+          const span  = (first.s - SELECTED)/60000 || 1;
+          const prog  = Math.max(0, Math.min(1, (now - SELECTED)/ (first.s-SELECTED)));
+          top = first.yTop * prog;
+        }else if (!next){                             // after last
+          const last = points[points.length-1];
+          const end  = last.e || last.s;
+          const tail = (24*60) - ((end.getHours()*60)+end.getMinutes());
+          const prog = Math.max(0, Math.min(1, (now - end)/(tail*60000)));
+          top = last.yBot + (listEl.scrollHeight - last.yBot) * prog;
+        }else{                                        // between two
+          const t0 = prev.e || prev.s, t1 = next.s;
+          const y0 = prev.yBot, y1 = next.yTop;
+          const prog = Math.max(0, Math.min(1, (now - t0)/(t1 - t0)));
+          top = y0 + (y1 - y0) * prog;
+        }
+      }
+      const dayTop = document.getElementById('dayBox').getBoundingClientRect().top + window.scrollY;
+      const listTop = listEl.getBoundingClientRect().top + window.scrollY;
+      nowLine.style.top = (listTop - dayTop + top) + 'px';
+    }
+
     // Kick the updater
     function startNowIndicator(){
       updateNowIndicator();
-      updateLiveArea();                  // ← add
+      updateNowLine();
+      updateLiveArea();
+      updateZoneBar();
+      
+      // Delay now line to ensure DOM is ready
+      setTimeout(() => {
+        updateNowLine();
+      }, 200);
+      
       clearInterval(window.__nowTimer);
-      // smooth enough and cheap
+      // Update every minute
       window.__nowTimer = setInterval(()=>{
         updateNowIndicator();
-        updateLiveArea();                // ← add
-      }, 60000); // every minute is fine
-      // also recalc after resizes
-      window.addEventListener('resize', updateNowIndicator);
-      window.addEventListener('scroll', updateNowIndicator, { passive:true });
+        updateNowLine();
+        updateLiveArea();
+        updateZoneBar();
+      }, 60000);
+      
+      // Recalc on resize/scroll
+      window.addEventListener('resize', ()=>{
+        updateNowIndicator();
+        setTimeout(updateNowLine, 50);
+      });
+      window.addEventListener('scroll', ()=>{
+        updateNowIndicator();
+        setTimeout(updateNowLine, 50);
+      }, { passive:true });
+
+      // 🔹 NEW: recalc when the agenda list itself scrolls
+      const listEl = document.getElementById('agendaList');
+      if (listEl) {
+        listEl.addEventListener('scroll', ()=>{
+          updateNowLine();
+        }, { passive:true });
+      }
     }
 
     // ------------ Quick add

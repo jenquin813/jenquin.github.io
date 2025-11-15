@@ -292,15 +292,23 @@ const ZONES = [
     // 2) Timed events list
     const list = document.getElementById('agendaList');
     list.innerHTML = '';
+    const today = startOfDay(new Date());
+    
     (window.__REM_EVENTS || []).forEach(ev=>{
       const row = document.createElement('div');
       row.className = 'agenda-row';
       row.dataset.start = ev.start.toISOString();
       const startStr = fmtTime(ev.start);
+      
+      // Check if this item is from yesterday
+      const itemDate = startOfDay(ev.start);
+      const isYesterday = +itemDate < +today;
+      const dayLabel = isYesterday ? ' <span style="color:var(--muted);font-size:10px;">(yesterday)</span>' : '';
+      
       row.innerHTML = `
         <span class="dot ${ev.color||'blue'}" aria-hidden="true"></span>
         <div>
-          <div class="agenda-title">${ev.title}</div>
+          <div class="agenda-title">${ev.title}${dayLabel}</div>
           <div class="agenda-meta">${startStr}</div>
         </div>
         <label class="chx"><span class="inner"></span></label>

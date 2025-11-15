@@ -14,7 +14,7 @@ Responsibility:
 import csv
 import json
 import sys
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 def build_daily_view(source_csv, output_json):
@@ -58,19 +58,23 @@ def build_daily_view(source_csv, output_json):
                     if valid_dates <= 3:
                         print(f"   Sample item: '{row.get('title', '')}' due {due_date}")
                     
-                    # Only include items due TODAY
-                    if due_date == today:
-                        print(f"   ✅ Found today item: '{row.get('title', '')}' at {due_dt.strftime('%H:%M')}")
-                        item = {
-                            'title': row.get('title', 'Untitled').strip(),
-                            'dueISO': due_dt.isoformat(),
-                            'time': due_dt.strftime('%H:%M'),
-                            'list': row.get('list', 'Default').strip(),
-                            'flagged': False,  # CSV doesn't have flagged field
-                            'priority': 0,     # CSV doesn't have priority field
-                            'id': row.get('id', '').strip()
-                        }
-                        today_items.append(item)
+                    # Keep if due is today OR yesterday
+                    yesterday = today - timedelta(days=1)
+                    if due_date not in (today, yesterday):
+                        continue
+                    
+                    day_label = "today" if due_date == today else "yesterday"
+                    print(f"   ✅ Found {day_label} item: '{row.get('title', '')}' at {due_dt.strftime('%H:%M')}")
+                    item = {
+                        'title': row.get('title', 'Untitled').strip(),
+                        'dueISO': due_dt.isoformat(),
+                        'time': due_dt.strftime('%H:%M'),
+                        'list': row.get('list', 'Default').strip(),
+                        'flagged': False,  # CSV doesn't have flagged field
+                        'priority': 0,     # CSV doesn't have priority field
+                        'id': row.get('id', '').strip()
+                    }
+                    today_items.append(item)
                         
                 except ValueError as e:
                     error_dates += 1
@@ -83,7 +87,7 @@ def build_daily_view(source_csv, output_json):
         print(f"   Total rows: {total_processed}")
         print(f"   Valid dates: {valid_dates}")
         print(f"   Error dates: {error_dates}")
-        print(f"   Items due today: {len(today_items)}")
+        print(f"   Items due today/yesterday: {len(today_items)}")
         
         # Create output structure
         output = {
@@ -103,7 +107,7 @@ def build_daily_view(source_csv, output_json):
         with open(output_json, 'w', encoding='utf-8') as f:
             json.dump(output, f, indent=2, ensure_ascii=False)
             
-        print(f"✅ Daily view: {len(today_items)} items for {today}")
+        print(f"✅ Daily view: {len(today_items)} items for today + yesterday")
         return True
         
     except Exception as e:

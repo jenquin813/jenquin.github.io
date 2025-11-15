@@ -83,7 +83,7 @@ scripts/
 ._oracle_twin_merge_snippet.html
 ._README.md
 ._run_commands
-._sandbox_calendar_agenda_card.html
+._sandbox_calendar_loading_bar.html
 ._sandbox_digital_twin_oracle.html
 ._script.js
 ._scripts
@@ -98,7 +98,7 @@ logo.svg
 oracle_twin_merge_snippet.html
 README.md
 run_commands
-sandbox_calendar_agenda_card.html
+sandbox_calendar_loading_bar.html
 sandbox_digital_twin_oracle.html
 script.js
 site-urls.txt
@@ -3159,7 +3159,7 @@ scripts/
 ._oracle_twin_merge_snippet.html
 ._README.md
 ._run_commands
-._sandbox_calendar_agenda_card.html
+._sandbox_calendar_loading_bar.html
 ._sandbox_digital_twin_oracle.html
 ._script.js
 ._scripts
@@ -3174,7 +3174,7 @@ logo.svg
 oracle_twin_merge_snippet.html
 README.md
 run_commands
-sandbox_calendar_agenda_card.html
+sandbox_calendar_loading_bar.html
 sandbox_digital_twin_oracle.html
 script.js
 site-urls.txt
@@ -9638,7 +9638,7 @@ head -20 "$OUTPUT_FILE"
 echo ""
 echo "✅ Reminders pull complete!"
 echo "💡 Usage: python3 -m http.server 8080 from Jenquin-site root"
-echo "🌐 Then open: http://localhost:8080/sandbox_calendar_agenda_card.html"
+echo "🌐 Then open: http://localhost:8080/sandbox_calendar_loading_bar.html"
 </file>
 
 <file path=".gitignore">
@@ -13479,7 +13479,7 @@ updateLiveArea = function(){
 </script>
 </file>
 
-<file path="sandbox_calendar_agenda_card.html">
+<file path="sandbox_calendar_loading_bar.html">
 <!doctype html>
 <html lang="en">
 <head>
@@ -15132,7 +15132,7 @@ mkdir -p Backups && zip -r "Backups/jenquin-site-backup-$(date +%Y%m%d-%H%M%S).z
 
 
 
-http://localhost:8080/sandbox_calendar_agenda_card.html
+http://localhost:8080/sandbox_calendar_loading_bar.html
 
 
 file:///Volumes/storage/projects/Jenquin-site/sandbox_digital_twin_oracle.html
@@ -15144,7 +15144,7 @@ cd /Volumes/storage/projects/Jenquin-site
 python3 -m http.server 8080
 
 Open + bookmark:
-http://localhost:8080/sandbox_calendar_agenda_card.html
+http://localhost:8080/sandbox_calendar_loading_bar.html
 </file>
 
 <file path="style.css">
@@ -17728,7 +17728,7 @@ head -20 "$OUTPUT_FILE"
 echo ""
 echo "✅ Reminders pull complete!"
 echo "💡 Usage: python3 -m http.server 8080 from Jenquin-site root"
-echo "🌐 Then open: http://localhost:8080/sandbox_calendar_agenda_card.html"
+echo "🌐 Then open: http://localhost:8080/sandbox_calendar_loading_bar.html"
 </file>
 
 <file path=".gitignore">
@@ -19318,7 +19318,7 @@ This project is currently under personal development and not licensed for redist
 Future licensing will be added once the full system architecture is ready for collaboration.
 </file>
 
-<file path="sandbox_calendar_agenda_card.html">
+<file path="sandbox_calendar_loading_bar.html">
 <!doctype html>
 <html lang="en">
 <head>
@@ -19759,7 +19759,7 @@ mkdir -p Backups && zip -r "Backups/jenquin-site-backup-$(date +%Y%m%d-%H%M%S).z
 
 
 
-http://localhost:8080/sandbox_calendar_agenda_card.html
+http://localhost:8080/sandbox_calendar_loading_bar.html
 
 
 file:///Volumes/storage/projects/Jenquin-site/sandbox_digital_twin_oracle.html
@@ -19771,7 +19771,7 @@ cd /Volumes/storage/projects/Jenquin-site
 python3 -m http.server 8080
 
 Open + bookmark:
-http://localhost:8080/sandbox_calendar_agenda_card.html
+http://localhost:8080/sandbox_calendar_loading_bar.html
 </file>
 
 <file path="style.css">
