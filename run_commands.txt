@@ -45,3 +45,6 @@ Check server status:
 lsof -i:8080                            (Show server process)
 curl -I http://localhost:8080/index.html    (Test HTTP headers)
 ps aux | grep "python3.*http.server"       (Find server processes)
+
+/Volumes/storage/projects/Jenquin-site/refresh_nova.sh
+
