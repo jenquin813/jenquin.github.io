@@ -13,7 +13,10 @@ Main App URLs:
 
 ## 🧪 SANDBOX DEVELOPMENT
 Sandbox URLs (same server):
+ #(agenda card)
 - http://localhost:8080/sandbox_calendar_loading_bar.html
+
+# (digital twin oracle)
 - http://localhost:8080/sandbox_digital_twin_oracle.html
 
 ## 📁 DATA MANAGEMENT
@@ -25,7 +28,7 @@ lsof -ti:8080 | xargs kill
 
 ## 📦 GIT OPERATIONS
 Add modified files:
-git add .
+git add.
 
 Commit changes:
 git commit -m "your commit message"

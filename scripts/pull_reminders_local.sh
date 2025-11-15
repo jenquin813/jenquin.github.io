@@ -5,7 +5,7 @@
 set -e
 
 # Paths
-SOURCE_DIR="/Volumes/storage/projects/LifeOrganizer/life_organizer/modules/organized_reminders/data/deduped_reminders"
+SOURCE_DIR="/Volumes/storage/projects/LifeOrganizer/life_organizer/modules/organized_reminders/data/nova_scheduling"
 OUTPUT_FILE="/Volumes/storage/projects/Jenquin-site/data/reminders.local.json"
 TEMP_FILE="/tmp/reminders_processing.json"
 
@@ -121,4 +121,4 @@ head -20 "$OUTPUT_FILE"
 echo ""
 echo "✅ Reminders pull complete!"
 echo "💡 Usage: python3 -m http.server 8080 from Jenquin-site root"
-echo "🌐 Then open: http://localhost:8080/sandbox_calendar_loading_bar.html"
+echo "🌐 Then open: http://localhost:8080/sandbox_calendar_agenda_card.html"
